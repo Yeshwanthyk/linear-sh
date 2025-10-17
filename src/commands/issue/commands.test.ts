@@ -286,6 +286,32 @@ describe("Mutation commands", () => {
     IssueStartCommand.git.checkoutBranch = originalGit.checkoutBranch;
   });
 
+  test("IssueStartCommand surfaces git failures", async () => {
+    const { context, writes } = createTestContext({
+      service: {
+        getIssue: () => Promise.resolve(createIssueSummary()),
+      },
+    });
+
+    const originalGit = { ...IssueStartCommand.git };
+    IssueStartCommand.git.branchExists = () => false;
+    IssueStartCommand.git.createBranch = () => {
+      throw new Error("git blow up");
+    };
+
+    BaseCommand.setContextFactory(() => Promise.resolve(context));
+    const command = new IssueStartCommand();
+    command.issueRef = "ENG-1";
+
+    const result = await command.execute();
+    expect(result).toBe(1);
+    expect(writes[writes.length - 1]).toContain("ERROR:Error: git blow up");
+
+    IssueStartCommand.git.branchExists = originalGit.branchExists;
+    IssueStartCommand.git.createBranch = originalGit.createBranch;
+    IssueStartCommand.git.checkoutBranch = originalGit.checkoutBranch;
+  });
+
   test("IssuePrCommand invokes gh", async () => {
     const invocations: string[][] = [];
     const originalRunGh = IssuePrCommand.runGh;

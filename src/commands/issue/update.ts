@@ -1,9 +1,11 @@
 import { Command, Option } from "clipanion";
 import enquirer from "enquirer";
+import { Effect } from "effect";
 
-import type { CommandContext } from "../base-command";
 import { IssueBaseCommand, ISSUE_USAGE_CATEGORY } from "./base";
 import { normalizeOptionString, normalizeOptionStringArray, resolveAssigneeId, resolveStateId } from "./helpers";
+import { CliContext, runCommandEffect } from "../../runtime/effect";
+import type { CommandContext } from "../base-command";
 
 export class IssueUpdateCommand extends IssueBaseCommand {
   static paths = [["issue", "update"]];
@@ -74,73 +76,86 @@ Failure Modes:
 
   async execute(): Promise<number> {
     return this.withContext(async (context) => {
-      const issueRef = this.resolveIssueRef(context);
-      const issue = await context.service.getIssue(issueRef);
+      const command = this;
+      const program = Effect.gen(function* (_) {
+        const ctx = yield* _(CliContext);
+        const issueRef = command.resolveIssueRef(ctx);
+        const issue = yield* _(Effect.promise(() => ctx.service.getIssue(issueRef)));
 
-      let updateInput = await this.buildUpdateInput(context, issue.id, issue.teamId);
+        let updateInput = yield* _(command.buildUpdateInputEffect(ctx, issue.id, issue.teamId));
 
-      // If no update options provided, prompt for comment if stdin is interactive
-      if (!updateInput && process.stdin.isTTY) {
-        const comment = await this.promptForComment();
-        if (comment) {
-          updateInput = { fields: {}, comment };
+        if (!updateInput) {
+          const interactive = yield* _(Effect.sync(() => process.stdin.isTTY === true));
+          if (interactive) {
+            const comment = yield* _(command.promptForCommentEffect());
+            if (comment) {
+              updateInput = { fields: {}, comment };
+            }
+          }
         }
-      }
 
-      if (!updateInput) {
-        context.output.warn("No update options provided");
+        if (!updateInput) {
+          ctx.output.warn("No update options provided");
+          return 0;
+        }
+
+        const hasFieldUpdates = Object.keys(updateInput.fields).length > 0;
+        const updated = hasFieldUpdates
+          ? yield* _(Effect.promise(() => ctx.service.updateIssue(issue.id, updateInput!.fields)))
+          : issue;
+
+        if (updateInput.comment) {
+          yield* _(Effect.promise(() =>
+            ctx.service.createComment({
+              issueId: issue.id,
+              body: updateInput!.comment!,
+            }),
+          ));
+        }
+
+        if (command.json) {
+          ctx.output.write({ issue: updated });
+        } else {
+          ctx.output.success("Issue updated", {
+            identifier: updated.identifier,
+            stateId: updated.stateId,
+          });
+        }
+
         return 0;
-      }
+      });
 
-      const updated = Object.keys(updateInput.fields).length > 0
-        ? await context.service.updateIssue(issue.id, updateInput.fields)
-        : issue;
-
-      if (updateInput.comment) {
-        await context.service.createComment({
-          issueId: issue.id,
-          body: updateInput.comment,
-        });
-      }
-
-      if (this.json) {
-        context.output.write({ issue: updated });
-      } else {
-        context.output.success("Issue updated", {
-          identifier: updated.identifier,
-          stateId: updated.stateId,
-        });
-      }
-
-      return 0;
+      return runCommandEffect(context, program);
     });
   }
 
-  private async promptForComment(): Promise<string | undefined> {
+  private promptForCommentEffect() {
     const enquirerModule = enquirer as unknown as {
       prompt<T>(questions: unknown): Promise<T>;
     };
 
-    try {
-      const responses = await enquirerModule.prompt<{ comment: string }>([
-        {
-          type: "input",
-          name: "comment",
-          message: "Add a note or comment",
-          required: false,
-        },
-      ]);
-      return responses.comment?.trim() || undefined;
-    } catch {
-      return undefined;
-    }
+    return Effect.tryPromise({
+      try: () =>
+        enquirerModule
+          .prompt<{ comment: string }>([
+            {
+              type: "input",
+              name: "comment",
+              message: "Add a note or comment",
+              required: false,
+            },
+          ])
+          .then((responses) => responses.comment?.trim() || undefined),
+      catch: () => undefined,
+    });
   }
 
-  private async buildUpdateInput(
+  private buildUpdateInputEffect(
     context: CommandContext,
     issueId: string,
     teamId?: string | null,
-  ): Promise<{ fields: Record<string, unknown>; comment?: string } | undefined> {
+  ) {
+    const command = this;
     const fields: Record<string, unknown> = {};
 
     const titleValue = normalizeOptionString(this.titleUpdate);
@@ -157,35 +172,35 @@ Failure Modes:
       fields.labelIds = labelIds;
     }
 
-    const statusValue = normalizeOptionString(this.status);
-    if (statusValue) {
-      const stateId = await resolveStateId(
-        context,
-        statusValue,
-        teamId ?? context.config.defaults.teamId,
-      );
-      fields.stateId = stateId;
-    }
+    return Effect.gen(function* (_) {
+      const targetTeam = teamId ?? context.config.defaults.teamId;
+      const statusValue = normalizeOptionString(command.status);
+      if (statusValue) {
+        const stateId = yield* _(Effect.promise(() =>
+          resolveStateId(context, statusValue, targetTeam),
+        ));
+        fields.stateId = stateId;
+      }
 
-    const assigneeValue = normalizeOptionString(this.assignee);
-    if (assigneeValue) {
-      fields.assigneeId = await resolveAssigneeId(
-        context,
-        assigneeValue,
-        teamId ?? context.config.defaults.teamId,
-      );
-    }
+      const assigneeValue = normalizeOptionString(command.assignee);
+      if (assigneeValue) {
+        const assigneeId = yield* _(Effect.promise(() =>
+          resolveAssigneeId(context, assigneeValue, targetTeam),
+        ));
+        fields.assigneeId = assigneeId;
+      }
 
-    const hasChanges = Object.keys(fields).length > 0;
-    const comment = this.comment;
+      const hasChanges = Object.keys(fields).length > 0;
+      const comment = command.comment;
 
-    if (!hasChanges && !comment) {
-      return undefined;
-    }
+      if (!hasChanges && !comment) {
+        return undefined;
+      }
 
-    return {
-      fields,
-      comment,
-    };
+      return {
+        fields,
+        comment,
+      };
+    });
   }
 }
