@@ -1,0 +1,8 @@
+name = "linear-sh"
+version = "0.1.0"
+
+[build]
+target = "bun"
+
+[test]
+root = "."

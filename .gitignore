@@ -1,0 +1,22 @@
+# Node/Bun dependencies
+node_modules/
+
+# Build artifacts
+bin/
+dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+
+# Env files
+.env
+.env.local
+
+# Coverage
+coverage/

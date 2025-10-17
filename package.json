@@ -1,0 +1,39 @@
+{
+  "name": "linear-sh",
+  "version": "0.1.0",
+  "description": "Bun-based CLI for interacting with Linear issues",
+  "type": "module",
+  "bin": {
+    "linear-sh": "./bin/linear.mjs"
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outfile ./bin/linear.mjs --target bun --minify",
+    "lint": "bunx eslint .",
+    "test": "bun test",
+    "typecheck": "bunx tsc --noEmit"
+  },
+  "dependencies": {
+    "@linear/sdk": "^60.0.0",
+    "clipanion": "^3.2.1",
+    "enquirer": "^2.4.1",
+    "zx": "^8.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "bun-types": "^1.1.25",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "typescript": "^5.6.2",
+    "typescript-eslint": "^7.18.0"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
+  },
+  "keywords": [
+    "linear",
+    "cli",
+    "automation"
+  ]
+}
