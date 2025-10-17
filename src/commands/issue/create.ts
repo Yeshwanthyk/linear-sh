@@ -131,12 +131,15 @@ Failure Modes:
 
     const labelIds = normalizeOptionStringArray(this.labels) ?? undefined;
 
+    const projectId = context.config.defaults.projectId;
+
     return {
       teamId,
       title,
       description,
       assigneeId,
       labelIds,
+      projectId,
     };
   }
 }

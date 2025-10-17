@@ -66,6 +66,7 @@ export interface IssueCreateInput {
   readonly description?: string | null;
   readonly assigneeId?: string;
   readonly labelIds?: string[];
+  readonly projectId?: string;
 }
 
 export interface CommentInput {
@@ -250,6 +251,7 @@ export class LinearService {
           description: input.description ?? null,
           assigneeId: input.assigneeId,
           labelIds: input.labelIds,
+          projectId: input.projectId,
         },
       });
 
