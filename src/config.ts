@@ -17,6 +17,7 @@ export interface LinearConfigDefaults {
   teamId?: string;
   assigneeId?: string;
   workflowStateId?: string;
+  projectId?: string;
 }
 
 export interface LinearConfig {
@@ -207,6 +208,10 @@ function configFromEnv(env: NodeJS.ProcessEnv): PartialConfig {
 
   if (env.LINEAR_DEFAULT_WORKFLOW_STATE_ID) {
     defaults.workflowStateId = env.LINEAR_DEFAULT_WORKFLOW_STATE_ID;
+  }
+
+  if (env.LINEAR_DEFAULT_PROJECT_ID) {
+    defaults.projectId = env.LINEAR_DEFAULT_PROJECT_ID;
   }
 
   const output = env.LINEAR_OUTPUT_FORMAT ?? env.LINEAR_OUTPUT;

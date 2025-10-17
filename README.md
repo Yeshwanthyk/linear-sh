@@ -51,7 +51,8 @@ Example config file:
   "defaults": {
     "teamId": "team-uuid",
     "assigneeId": "user-uuid",
-    "workflowStateId": "state-uuid"
+    "workflowStateId": "state-uuid",
+    "projectId": "project-uuid"
   }
 }
 ```
@@ -61,14 +62,14 @@ Environment variables:
 - `LINEAR_API_KEY` (required)
 - `LINEAR_API_HOST` (optional, defaults to `https://api.linear.app/graphql`)
 - `LINEAR_OUTPUT_FORMAT` (`plain` | `json`)
-- `LINEAR_DEFAULT_TEAM_ID`, `LINEAR_DEFAULT_ASSIGNEE_ID`, `LINEAR_DEFAULT_WORKFLOW_STATE_ID`
+- `LINEAR_DEFAULT_TEAM_ID`, `LINEAR_DEFAULT_ASSIGNEE_ID`, `LINEAR_DEFAULT_WORKFLOW_STATE_ID`, `LINEAR_DEFAULT_PROJECT_ID`
 
 ## Commands
 
 Run `linear-sh --help` for a high-level overview. Key commands:
 
 - `linear-sh issue view [identifier]` – Show detailed issue information, optionally open in browser (`--web`) or emit JSON (`--json`).
-- `linear-sh issue list` – List issues with filters (`--team`, `--state`, `--assignee`, `--limit`).
+- `linear-sh issue list` – List issues with filters (`--team`, `--state`, `--assignee`, `--limit`). Project configuration available for future Linear API support.
 - `linear-sh issue id|title|url [identifier]` – Quick accessors useful in scripts.
 - `linear-sh issue create` – Create a new issue via flags (`--title`, `--description`, `--team`, `--assignee`, `--label`). Missing fields fall back to interactive prompts when attached to a TTY.
 - `linear-sh issue update <identifier>` – Update title, description, state (`--status`), labels, or assignee; optionally append a comment (`--comment`).

@@ -24,6 +24,7 @@ export interface IssueSummary {
   readonly stateId?: string | null;
   readonly assigneeId?: string | null;
   readonly teamId?: string | null;
+  readonly projectId?: string | null;
   readonly labelIds: string[];
   readonly priorityLabel?: string | null;
   readonly updatedAt?: string | null;
@@ -48,6 +49,7 @@ export interface IssueListOptions {
   readonly stateId?: string;
   readonly limit?: number;
   readonly assigneeId?: string;
+  readonly projectId?: string;
 }
 
 export interface IssueUpdateInput {
@@ -104,6 +106,7 @@ interface LinearIssueEntity {
   stateId?: string | null;
   assigneeId?: string | null;
   teamId?: string | null;
+  projectId?: string | null;
   labelIds: string[];
   priorityLabel?: string | null;
   createdAt?: Date;
@@ -111,6 +114,7 @@ interface LinearIssueEntity {
   labels?: (variables?: Record<string, unknown>) => Promise<IssueLabelConnectionEntity>;
   team?: (variables?: Record<string, unknown>) => Promise<{ id: string; name: string; key?: string | null } | null>;
   assignee?: (variables?: Record<string, unknown>) => Promise<{ id: string; name: string; email?: string | null } | null>;
+  project?: (variables?: Record<string, unknown>) => Promise<{ id: string; name: string } | null>;
 }
 
 interface IssueConnectionEntity {
@@ -197,12 +201,25 @@ export class LinearService {
       const filter = this.buildIssueFilter(options);
       const response = await this.client.issues({
         filter: Object.keys(filter).length > 0 ? filter : undefined,
-        first: options.limit ?? this.maxListItems,
+        first: options.projectId ? this.maxListItems * 2 : options.limit ?? this.maxListItems, // Fetch more if we need to filter by project
         orderBy: "updatedAt",
       });
 
-      const nodes = response?.nodes ?? [];
-      return nodes.map((node) => this.mapIssue(node));
+      let nodes = response?.nodes ?? [];
+      const mappedNodes = nodes.map((node) => this.mapIssue(node));
+
+      // Apply project filtering client-side since Linear API doesn't support it directly
+      let filteredNodes = mappedNodes;
+      if (options.projectId) {
+        filteredNodes = mappedNodes.filter((issue) => issue.projectId === options.projectId);
+      }
+
+      // Apply limit after project filtering
+      if (options.limit) {
+        filteredNodes = filteredNodes.slice(0, options.limit);
+      }
+
+      return filteredNodes;
     } catch (error) {
       throw this.toLinearApiError(error, "Failed to list issues");
     }
@@ -372,6 +389,7 @@ export class LinearService {
       stateId: issue.stateId ?? null,
       assigneeId: issue.assigneeId ?? null,
       teamId: issue.teamId ?? null,
+      projectId: issue.projectId ?? null,
       labelIds: issue.labelIds ?? [],
       priorityLabel: issue.priorityLabel ?? null,
       createdAt: issue.createdAt?.toISOString() ?? null,
@@ -427,6 +445,8 @@ export class LinearService {
     if (options.assigneeId) {
       filter.assignee = { id: { eq: options.assigneeId } };
     }
+    // Note: Project filtering is implemented client-side since Linear API doesn't support it directly
+    // Issues belong to teams, and projects are collections/groupings of issues
     return filter;
   }
 

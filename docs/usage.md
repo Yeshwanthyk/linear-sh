@@ -25,6 +25,7 @@ Options:
 - `--team <team-id>` – Restrict to a team.
 - `--state <name|id>` – Filter by workflow state (matches by name or ID).
 - `--assignee <name|email|id>` – Only show issues assigned to the given user.
+- `--project <project-id>` – Filter by project ID (config option available for future use, project filtering not yet supported by Linear API).
 - `--limit <number>` – Number of issues to fetch (defaults to 50).
 - `--json` – JSON output.
 
