@@ -108,10 +108,10 @@ class MockLinearClient {
     return Promise.resolve(next);
   }
 
-  request(document: any, variables: Record<string, unknown>) {
+  request(document: unknown, variables: Record<string, unknown>) {
     // Handle GraphQL mutations based on the document type
     // Check the document object for mutation name
-    const docName = document?.definitions?.[0]?.name?.value ?? "";
+    const docName = (document as { definitions?: Array<{ name?: { value?: string } }> })?.definitions?.[0]?.name?.value ?? "";
 
     if (docName === "createIssue") {
       const next = this.issueCreateQueue.shift() ?? { success: false };
@@ -124,10 +124,14 @@ class MockLinearClient {
         });
       }
       return Promise.resolve({ issueCreate: next });
-    } else if (docName === "updateIssue") {
+    }
+
+    if (docName === "updateIssue") {
       const next = this.issueUpdateQueue.shift() ?? { success: true, issue: createMockIssue({ id: variables.id as string, identifier: "ENG-1", title: "updated" }) };
       return Promise.resolve({ issueUpdate: next });
-    } else if (docName === "createComment") {
+    }
+
+    if (docName === "createComment") {
       const next = this.commentCreateQueue.shift() ?? { success: true, comment: { id: `comment-${variables.input?.issueId as string}` } };
       return Promise.resolve({ commentCreate: next });
     }

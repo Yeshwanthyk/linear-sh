@@ -16,7 +16,7 @@ function normaliseCategory(category?: string | null): string {
 }
 
 export class CompactHelpCommand extends Command {
-  static paths = [[`-h`], [`--help`], [`help`]];
+  static paths = [["-h"], ["--help"], ["help"]];
 
   async execute(): Promise<number> {
     const definitions = this.cli.definitions({ colored: false }) as CommandDefinition[];
@@ -75,7 +75,7 @@ export class CompactHelpCommand extends Command {
 }
 
 export class DetailedHelpCommand extends Command {
-  static paths = [[`--help-verbose`]];
+  static paths = [["--help-verbose"]];
 
   async execute(): Promise<number> {
     const definitions = this.cli.definitions({ colored: false }) as CommandDefinition[];

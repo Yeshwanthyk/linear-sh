@@ -130,7 +130,7 @@ Failure Modes:
       }
 
       const teamId =
-        normalizeOptionString(command.team) ?? context.config.defaults.teamId;
+        normalizeOptionString(this.team) ?? context.config.defaults.teamId;
       if (!teamId) {
         return yield* _(Effect.fail(new Error("Team ID is required (set via --team or config)")));
       }

@@ -148,11 +148,22 @@ interface IssueLabelConnectionEntity {
   nodes?: Array<{ id: string; name: string; color?: string | null }>;
 }
 
+interface GraphqlRequester {
+  request(document: unknown, variables: Record<string, unknown>): PromiseLike<unknown>;
+}
+
+function isGraphqlRequester(value: unknown): value is GraphqlRequester {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  return typeof (value as { request?: unknown }).request === "function";
+}
+
 export class LinearService {
   private readonly client: LinearClientLike;
   private readonly cache: MetadataCache | undefined;
   private readonly maxListItems: number;
-  private readonly graphqlClient: any;
+  private readonly graphqlClient?: GraphqlRequester;
 
   constructor(options: LinearServiceOptions) {
     this.cache = options.cache === null ? undefined : options.cache ?? new MetadataCache();
@@ -160,27 +171,27 @@ export class LinearService {
 
     if (options.client) {
       this.client = options.client;
-      this.graphqlClient = undefined;
+      this.graphqlClient = isGraphqlRequester(options.client) ? options.client : undefined;
     } else {
       const baseClient = new LinearClient({
         apiKey: options.config.apiKey,
         apiUrl: options.config.apiHost,
       });
       this.client = baseClient as unknown as LinearClientLike;
-      this.graphqlClient = (baseClient as any).client;
+      const underlying = (baseClient as unknown as { client?: unknown }).client;
+      this.graphqlClient = isGraphqlRequester(underlying) ? underlying : undefined;
     }
   }
 
-  private getGraphqlClient() {
+  private getGraphqlClient(): GraphqlRequester {
     if (this.graphqlClient) {
       return this.graphqlClient;
     }
-    // For mock clients in tests that support request method
-    if (typeof (this.client as any).request === 'function') {
-      return this.client as any;
+    if (isGraphqlRequester(this.client)) {
+      return this.client;
     }
-    // Fallback - shouldn't happen in production
-    return this.client;
+    // Fallback - shouldn't happen in production, but align with previous behaviour
+    return this.client as unknown as GraphqlRequester;
   }
 
   async getIssue(issueRef: string): Promise<IssueSummary> {
@@ -221,7 +232,7 @@ export class LinearService {
         orderBy: "updatedAt",
       });
 
-      let nodes = response?.nodes ?? [];
+      const nodes = response?.nodes ?? [];
       const mappedNodes = nodes.map((node) => this.mapIssue(node));
 
       // Apply project filtering client-side since Linear API doesn't support it directly
