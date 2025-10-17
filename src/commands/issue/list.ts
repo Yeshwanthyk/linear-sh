@@ -65,15 +65,14 @@ Failure Modes:
 
   async execute(): Promise<number> {
     return this.withContext(async (context) => {
-      const command = this;
       const program = Effect.gen(function* (_) {
         const ctx = yield* _(CliContext);
 
-        const teamFilter = normalizeOptionString(command.team) ?? ctx.config.defaults.teamId;
-        const stateFilter = normalizeOptionString(command.state) ?? ctx.config.defaults.workflowStateId;
-        const assigneeFilter = normalizeOptionString(command.assignee);
-        const projectFilter = normalizeOptionString(command.project) ?? ctx.config.defaults.projectId;
-        const limitValue = normalizeOptionString(command.limit);
+        const teamFilter = normalizeOptionString(this.team) ?? ctx.config.defaults.teamId;
+        const stateFilter = normalizeOptionString(this.state) ?? ctx.config.defaults.workflowStateId;
+        const assigneeFilter = normalizeOptionString(this.assignee);
+        const projectFilter = normalizeOptionString(this.project) ?? ctx.config.defaults.projectId;
+        const limitValue = normalizeOptionString(this.limit);
         const limit = limitValue ? Number.parseInt(limitValue, 10) : undefined;
 
         const resolvedStateId = yield* _(Effect.promise(() =>
@@ -93,15 +92,15 @@ Failure Modes:
           }),
         ));
 
-        if (command.json) {
+        if (this.json) {
           ctx.output.write({ issues });
           return 0;
         }
 
-        const summary = yield* _(Effect.promise(() => command.enrichIssues(ctx, issues)));
+        const summary = yield* _(Effect.promise(() => this.enrichIssues(ctx, issues)));
         ctx.output.write(formatIssueTable(summary));
         return 0;
-      });
+      }.bind(this));
 
       return runCommandEffect(context, program);
     });

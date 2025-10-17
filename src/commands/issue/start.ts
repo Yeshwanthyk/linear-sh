@@ -79,20 +79,19 @@ Failure Modes:
 
   async execute(): Promise<number> {
     return this.withContext(async (context) => {
-      const command = this;
       const program = Effect.gen(function* (_) {
         const ctx = yield* _(CliContext);
-        const issueRef = command.resolveIssueRef(ctx);
+        const issueRef = this.resolveIssueRef(ctx);
         const details = yield* _(Effect.promise(() => ctx.service.getIssue(issueRef)));
 
-        const branchName = yield* _(command.handleBranchEffect(details));
-        const updates = yield* _(command.prepareUpdatesEffect(details, ctx));
+        const branchName = yield* _(this.handleBranchEffect(details));
+        const updates = yield* _(this.prepareUpdatesEffect(details, ctx));
 
         if (updates.stateId || updates.assigneeId) {
           yield* _(Effect.promise(() => ctx.service.updateIssue(details.id, updates)));
         }
 
-        if (command.json) {
+        if (this.json) {
           const output: Record<string, unknown> = {
             issue: { id: details.id, identifier: details.identifier },
           };
@@ -101,7 +100,7 @@ Failure Modes:
           }
           ctx.output.write(output);
         } else {
-          const message = command.noBranch === true ? "Issue updated" : "Issue started";
+          const message = this.noBranch === true ? "Issue updated" : "Issue started";
           const payload: Record<string, string> = { identifier: details.identifier };
           if (branchName) {
             payload.branch = branchName;
@@ -110,20 +109,19 @@ Failure Modes:
         }
 
         return 0;
-      });
+      }.bind(this));
 
       return runCommandEffect(context, program);
     });
   }
 
   private handleBranchEffect(details: IssueSummary) {
-    const command = this;
     return Effect.gen(function* (_) {
-      if (command.noBranch === true) {
+      if (this.noBranch === true) {
         return undefined;
       }
 
-      const branchOverride = normalizeOptionString(command.branch);
+      const branchOverride = normalizeOptionString(this.branch);
       const branchName = branchOverride ?? deriveBranchName(details.identifier, details.branchName, details.title);
 
       yield* _(Effect.sync(() => {
@@ -135,20 +133,19 @@ Failure Modes:
       }));
 
       return branchName;
-    });
+    }.bind(this));
   }
 
   private prepareUpdatesEffect(
     details: IssueSummary,
     context: CommandContext,
   ) {
-    const command = this;
     const updates: { stateId?: string; assigneeId?: string } = {};
 
     const targetTeam = details.teamId ?? context.config.defaults.teamId;
 
     const effect = Effect.gen(function* (_) {
-      const desiredState = normalizeOptionString(command.state) ?? "In Progress";
+      const desiredState = normalizeOptionString(this.state) ?? "In Progress";
       const stateId = yield* _(Effect.promise(() =>
         resolveStateId(context, desiredState, targetTeam),
       ));
@@ -156,8 +153,8 @@ Failure Modes:
         updates.stateId = stateId;
       }
 
-      if (command.assign || command.assignee) {
-        const assigneeSource = normalizeOptionString(command.assignee) ?? context.config.defaults.assigneeId;
+      if (this.assign || this.assignee) {
+        const assigneeSource = normalizeOptionString(this.assignee) ?? context.config.defaults.assigneeId;
         if (assigneeSource) {
           const assigneeId = yield* _(Effect.promise(() =>
             resolveAssigneeId(context, assigneeSource, targetTeam),
@@ -169,7 +166,7 @@ Failure Modes:
       }
 
       return updates;
-    });
+    }.bind(this));
 
     return effect;
   }

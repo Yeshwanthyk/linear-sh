@@ -71,13 +71,12 @@ Failure Modes:
 
   async execute(): Promise<number> {
     return this.withContext(async (context) => {
-      const command = this;
       const program = Effect.gen(function* (_) {
-        const issueInput = yield* _(command.collectInputEffect());
+        const issueInput = yield* _(this.collectInputEffect());
         const ctx = yield* _(CliContext);
         const issue = yield* _(Effect.promise(() => ctx.service.createIssue(issueInput)));
 
-        if (command.json) {
+        if (this.json) {
           ctx.output.write({ issue });
         } else {
           ctx.output.success("Issue created", {
@@ -87,19 +86,18 @@ Failure Modes:
         }
 
         return 0;
-      });
+      }.bind(this));
 
       return runCommandEffect(context, program);
     });
   }
 
   private collectInputEffect() {
-    const command = this;
     return Effect.gen<{ teamId: string; title: string; description?: string; assigneeId?: string; labelIds?: string[]; projectId?: string | null | undefined }>(function* (_) {
       const context = yield* _(CliContext);
 
-      let title = command.title;
-      let description = command.description;
+      let title = this.title;
+      let description = this.description;
 
       const enquirerModule = enquirer as unknown as {
         prompt<T>(questions: unknown): Promise<T>;
@@ -140,12 +138,12 @@ Failure Modes:
       const assigneeId = yield* _(Effect.promise(() =>
         resolveAssigneeId(
           context,
-          normalizeOptionString(command.assignee) ?? context.config.defaults.assigneeId,
+          normalizeOptionString(this.assignee) ?? context.config.defaults.assigneeId,
           teamId,
         ),
       ));
 
-      const labelIds = normalizeOptionStringArray(command.labels) ?? undefined;
+      const labelIds = normalizeOptionStringArray(this.labels) ?? undefined;
       const projectId = context.config.defaults.projectId;
 
       return {
@@ -156,6 +154,6 @@ Failure Modes:
         labelIds,
         projectId,
       };
-    });
+    }.bind(this));
   }
 }

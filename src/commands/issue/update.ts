@@ -155,7 +155,6 @@ Failure Modes:
     issueId: string,
     teamId?: string | null,
   ) {
-    const command = this;
     const fields: Record<string, unknown> = {};
 
     const titleValue = normalizeOptionString(this.titleUpdate);
@@ -174,7 +173,7 @@ Failure Modes:
 
     return Effect.gen(function* (_) {
       const targetTeam = teamId ?? context.config.defaults.teamId;
-      const statusValue = normalizeOptionString(command.status);
+      const statusValue = normalizeOptionString(this.status);
       if (statusValue) {
         const stateId = yield* _(Effect.promise(() =>
           resolveStateId(context, statusValue, targetTeam),
@@ -182,7 +181,7 @@ Failure Modes:
         fields.stateId = stateId;
       }
 
-      const assigneeValue = normalizeOptionString(command.assignee);
+      const assigneeValue = normalizeOptionString(this.assignee);
       if (assigneeValue) {
         const assigneeId = yield* _(Effect.promise(() =>
           resolveAssigneeId(context, assigneeValue, targetTeam),
@@ -191,7 +190,7 @@ Failure Modes:
       }
 
       const hasChanges = Object.keys(fields).length > 0;
-      const comment = command.comment;
+      const comment = this.comment;
 
       if (!hasChanges && !comment) {
         return undefined;
@@ -201,6 +200,6 @@ Failure Modes:
         fields,
         comment,
       };
-    });
+    }.bind(this));
   }
 }
