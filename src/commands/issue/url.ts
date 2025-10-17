@@ -1,6 +1,8 @@
 import { Command } from "clipanion";
+import { Effect } from "effect";
 
 import { IssueBaseCommand, ISSUE_USAGE_CATEGORY } from "./base";
+import { CliContext, runCommandEffect } from "../../runtime/effect";
 
 export class IssueUrlCommand extends IssueBaseCommand {
   static paths = [["issue", "url"]];
@@ -25,21 +27,26 @@ Behavior:
 
   async execute(): Promise<number> {
     return this.withContext(async (context) => {
-      const issueRef = this.resolveIssueRef(context);
-      const issue = await context.service.getIssue(issueRef);
+      const program = Effect.gen(function* (_) {
+        const ctx = yield* _(CliContext);
+        const issueRef = yield* _(this.resolveIssueRefEffect());
+        const issue = yield* _(Effect.promise(() => ctx.service.getIssue(issueRef)));
 
-      if (!issue.url) {
-        context.output.error(new Error("Issue does not have a URL"));
-        return 1;
-      }
+        if (!issue.url) {
+          ctx.output.error(new Error("Issue does not have a URL"));
+          return 1;
+        }
 
-      if (this.json) {
-        context.output.write({ identifier: issue.identifier, url: issue.url });
-      } else {
-        context.output.write(issue.url);
-      }
+        if (this.json) {
+          ctx.output.write({ identifier: issue.identifier, url: issue.url });
+        } else {
+          ctx.output.write(issue.url);
+        }
 
-      return 0;
+        return 0;
+      }.bind(this));
+
+      return runCommandEffect(context, program);
     });
   }
 }

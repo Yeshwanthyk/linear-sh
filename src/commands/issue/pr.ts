@@ -1,7 +1,9 @@
 import { Command, Option } from "clipanion";
+import { Effect } from "effect";
 import { spawnSync } from "node:child_process";
 
 import { IssueBaseCommand, ISSUE_USAGE_CATEGORY } from "./base";
+import { CliContext, runCommandEffect } from "../../runtime/effect";
 
 export class IssuePrCommand extends IssueBaseCommand {
   static paths = [["issue", "pr"]];
@@ -46,31 +48,36 @@ Failure Modes:
 
   async execute(): Promise<number> {
     return this.withContext(async (context) => {
-      const issueRef = this.resolveIssueRef(context);
-      const issue = await context.service.getIssueDetails(issueRef);
+      const program = Effect.gen(function* (_) {
+        const ctx = yield* _(CliContext);
+        const issueRef = yield* _(this.resolveIssueRefEffect());
+        const issue = yield* _(Effect.promise(() => ctx.service.getIssueDetails(issueRef)));
 
-      if (!issue.url) {
-        throw new Error("Issue does not have a URL to include in PR body");
-      }
+        if (!issue.url) {
+          return yield* _(Effect.fail(new Error("Issue does not have a URL to include in PR body")));
+        }
 
-      const title = `[${issue.identifier}] ${issue.title}`;
-      const body = `${issue.title}\n\n${issue.url}`;
+        const title = `[${issue.identifier}] ${issue.title}`;
+        const body = `${issue.title}\n\n${issue.url}`;
 
-      const args = ["pr", "create", "--fill", "--title", title, "--body", body];
-      if (this.draft) {
-        args.push("--draft");
-      }
+        const args = ["pr", "create", "--fill", "--title", title, "--body", body];
+        if (this.draft) {
+          args.push("--draft");
+        }
 
-      const result = IssuePrCommand.runGh(args);
-      if (result.status !== 0) {
-        throw new Error("gh pr create failed");
-      }
+        const result = yield* _(Effect.sync(() => IssuePrCommand.runGh(args)));
+        if (result.status !== 0) {
+          return yield* _(Effect.fail(new Error("gh pr create failed")));
+        }
 
-      context.output.success("Pull request created", {
-        issue: issue.identifier,
-      });
+        ctx.output.success("Pull request created", {
+          issue: issue.identifier,
+        });
 
-      return 0;
+        return 0;
+      }.bind(this));
+
+      return runCommandEffect(context, program);
     });
   }
 }

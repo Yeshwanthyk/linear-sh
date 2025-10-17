@@ -1,8 +1,10 @@
 import { Command, Option } from "clipanion";
+import { Effect } from "effect";
 
 import { IssueBaseCommand, ISSUE_USAGE_CATEGORY } from "./base";
 import type { IssueDetails } from "../../linear/client";
 import { openInBrowser } from "../../utils/open";
+import { CliContext, runCommandEffect } from "../../runtime/effect";
 
 export class IssueViewCommand extends IssueBaseCommand {
   static paths = [["issue", "view"]];
@@ -38,20 +40,25 @@ Side Effects:
 
   async execute(): Promise<number> {
     return this.withContext(async (context) => {
-      const issueRef = this.resolveIssueRef(context);
-      const details = await context.service.getIssueDetails(issueRef);
+      const program = Effect.gen(function* (_) {
+        const ctx = yield* _(CliContext);
+        const issueRef = yield* _(this.resolveIssueRefEffect());
+        const details = yield* _(Effect.promise(() => ctx.service.getIssueDetails(issueRef)));
 
-      if (this.open && details.url) {
-        await openInBrowser(details.url);
-      }
+        if (this.open && details.url) {
+          yield* _(Effect.promise(() => openInBrowser(details.url!)));
+        }
 
-      if (this.json) {
-        context.output.write({ issue: details });
-      } else {
-        context.output.write(formatIssueDetails(details));
-      }
+        if (this.json) {
+          ctx.output.write({ issue: details });
+        } else {
+          ctx.output.write(formatIssueDetails(details));
+        }
 
-      return 0;
+        return 0;
+      }.bind(this));
+
+      return runCommandEffect(context, program);
     });
   }
 }
