@@ -1,131 +1,67 @@
-# Linear CLI (`linear`)
+# linear-sh
 
-A Bun-powered TypeScript CLI that helps coding agents interact with Linear issues directly from the terminal. The tool wraps the Linear GraphQL API with automation-friendly commands, Git branch helpers, and GitHub PR integration.
+`linear-sh` is a Bun-based CLI for browsing and automating Linear issues from the terminal. It provides fast issue lookups, scripted updates, git branch helpers, and GitHub PR bootstrapping in one tool.
 
-## Installation
+## Quick Start
 
-Prerequisites:
+1. **Install prerequisites**
+   - [Bun](https://bun.sh) v1.1 or newer
+   - A Linear workspace personal API key (and optionally the GitHub CLI `gh` for PR commands)
+2. **Install dependencies**
+   ```bash
+   bun install
+   ```
+3. **Configure credentials**
+   - Export `LINEAR_API_KEY`, or
+   - Create `~/.config/linear-sh/config.json` with:
+     ```json
+     {
+       "apiKey": "lin_api_your_key",
+       "defaults": { "teamId": "team-uuid" }
+     }
+     ```
+4. **Run the CLI**
+   ```bash
+   bunx ./bin/linear.mjs --help
+   ```
+   To build a standalone bundle run `bun run build`; for a global-style dev install use `bun link`.
 
-- [Bun](https://bun.sh) v1.1 or newer
-- A Linear workspace with a personal API key
-- Optional: the GitHub CLI (`gh`) for PR automation
+## Configure
 
-Clone the repository and install dependencies:
-
-```bash
-bun install
-```
-
-Build the executable:
-
-```bash
-bun run build
-```
-
-You can run the CLI without linking via:
-
-```bash
-bunx ./bin/linear.mjs --help
-```
-
-For a global-style install during development:
-
-```bash
-bun link
-linear-sh --help
-```
-
-## Configuration
-
-The CLI loads configuration from (highest precedence first):
+Configuration is loaded in the following order (first match wins):
 
 1. Environment variables
-2. Repository-level `.linearrc.json`
-3. User config `~/.config/linear-sh/config.json`
+2. `.linearrc.json` in the repository
+3. `~/.config/linear-sh/config.json`
 
-Example config file:
+Common environment variables:
 
-```json
-{
-  "apiKey": "lin_api_your_key",
-  "defaults": {
-    "teamId": "team-uuid",
-    "assigneeId": "user-uuid",
-    "workflowStateId": "state-uuid",
-    "projectId": "project-uuid"
-  }
-}
-```
-
-### Quickstart config (Effect migration testing)
-
-For local testing you can drop the following into `~/.config/linear-sh/config.json`:
-
-```json
-{
-  "apiKey": "lin_api_1bmEVZGXcNwEptAv9KbZlzc6P5soX43xFQNFKt3e",
-  "defaults": {
-    "teamId": "bfdd5200-c3bb-4b68-b75d-9943a66c15b6",
-    "projectId": "09f67dce-5202-45c8-b8f2-a474b114a27e",
-    "workflowStateId": "fefb35cc-3eaf-44e9-a81c-74c8fb548884"
-  }
-}
-```
-
-To grab fresh IDs from Linear, open the command palette (`⌘K` on macOS, `Ctrl+K` on Windows/Linux) and search for `Dev: Copy model UUID…`. The palette lets you copy the UUID for whichever team, project, or workflow state you have highlighted.
-
-Environment variables:
-
-- `LINEAR_API_KEY` (required)
-- `LINEAR_API_HOST` (optional, defaults to `https://api.linear.app/graphql`)
+- `LINEAR_API_HOST` (defaults to `https://api.linear.app/graphql`)
 - `LINEAR_OUTPUT_FORMAT` (`plain` | `json`)
 - `LINEAR_DEFAULT_TEAM_ID`, `LINEAR_DEFAULT_ASSIGNEE_ID`, `LINEAR_DEFAULT_WORKFLOW_STATE_ID`, `LINEAR_DEFAULT_PROJECT_ID`
 
-## Commands
+## Usage
 
-Run `linear-sh --help` for a high-level overview. Key commands:
+Run `linear-sh --help` for the full command tree. Popular commands:
 
-- `linear-sh issue view [identifier]` – Show detailed issue information, optionally open in browser (`--web`) or emit JSON (`--json`).
-- `linear-sh issue list` – List issues with filters (`--team`, `--state`, `--assignee`, `--limit`). Project configuration available for future Linear API support.
-- `linear-sh issue id|title|url [identifier]` – Quick accessors useful in scripts.
-- `linear-sh issue create` – Create a new issue via flags (`--title`, `--description`, `--team`, `--assignee`, `--label`). Missing fields fall back to interactive prompts when attached to a TTY.
-- `linear-sh issue update <identifier>` – Update title, description, state (`--status`), labels, or assignee; optionally append a comment (`--comment`).
-- `linear-sh issue start [identifier]` – Infer or create a Git branch, move the issue into an “In Progress” state, and optionally assign it to the current user.
-- `linear-sh issue pr [identifier]` – Generate a GitHub pull request seeded with the issue title, identifier, and URL (requires `gh`).
+- `linear-sh issue view [id]` — detailed issue summary, with `--json` or `--web`
+- `linear-sh issue list [--team ENG --state InProgress]` — filtered summaries
+- `linear-sh issue create --title "..." [--description "..."]` — new issue via flags or interactive prompts
+- `linear-sh issue start [id]` — create/check out a branch and move the issue in Linear
+- `linear-sh issue pr [id]` — open a GitHub pull request seeded from the issue
 
-Refer to [`docs/usage.md`](docs/usage.md) for a complete command reference and examples.
+Additional examples live in `docs/usage.md`.
 
 ## Development
 
-Common workflows:
-
 ```bash
-# Linting (Biome check)
-bun run lint
-
-# Format (Biome write)
-bun run format
-
-# Type checking
-bun run typecheck
-
-# Unit tests
-bun test
-
-# Build bundle
-bun run build
+bun run lint      # Biome check
+bun run format    # Biome write
+bun run typecheck # TypeScript
+bun test          # Bun test runner
+bun run build     # Bundle CLI
 ```
-
-### Release Flow
-
-Use the helper script to run release checks:
-
-```bash
-bun run scripts/release.ts --dry-run
-```
-
-By default the script performs a build, runs tests, and executes `bun publish --dry-run`. Remove the flag to run the publish step for real.
 
 ## License
 
-MIT License © 2025
+MIT © 2025
