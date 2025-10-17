@@ -71,6 +71,89 @@ describe("IssueListCommand", () => {
     expect(result).toBe(0);
     expect(JSON.parse(writes[0]).issues[0].identifier).toBe("ENG-1");
   });
+
+  test("uses config default team when no --team flag provided", async () => {
+    const callsToListIssues: unknown[] = [];
+    const { context, writes } = createTestContext({
+      config: {
+        defaults: {
+          teamId: "config-team-1",
+        },
+      },
+      service: {
+        listIssues: (options: unknown) => {
+          callsToListIssues.push(options);
+          return Promise.resolve([]);
+        },
+        getWorkflowStates: () => Promise.resolve([]),
+        getUsers: () => Promise.resolve([]),
+      },
+    });
+
+    BaseCommand.setContextFactory(() => Promise.resolve(context));
+    const command = new IssueListCommand();
+    command.json = true;
+
+    const result = await command.execute();
+    expect(result).toBe(0);
+    expect((callsToListIssues[0] as { teamId: string | undefined }).teamId).toBe("config-team-1");
+  });
+
+  test("uses config default state when no --state flag provided", async () => {
+    const callsToListIssues: unknown[] = [];
+    const { context, writes } = createTestContext({
+      config: {
+        defaults: {
+          teamId: "config-team-1",
+          workflowStateId: "config-state-1",
+        },
+      },
+      service: {
+        listIssues: (options: unknown) => {
+          callsToListIssues.push(options);
+          return Promise.resolve([]);
+        },
+        getWorkflowStates: () => Promise.resolve([]),
+        getUsers: () => Promise.resolve([]),
+      },
+    });
+
+    BaseCommand.setContextFactory(() => Promise.resolve(context));
+    const command = new IssueListCommand();
+    command.json = true;
+
+    const result = await command.execute();
+    expect(result).toBe(0);
+    expect((callsToListIssues[0] as { stateId: string | undefined }).stateId).toBe("config-state-1");
+  });
+
+  test("overrides config default team when --team flag provided", async () => {
+    const callsToListIssues: unknown[] = [];
+    const { context, writes } = createTestContext({
+      config: {
+        defaults: {
+          teamId: "config-team-1",
+        },
+      },
+      service: {
+        listIssues: (options: unknown) => {
+          callsToListIssues.push(options);
+          return Promise.resolve([]);
+        },
+        getWorkflowStates: () => Promise.resolve([]),
+        getUsers: () => Promise.resolve([]),
+      },
+    });
+
+    BaseCommand.setContextFactory(() => Promise.resolve(context));
+    const command = new IssueListCommand();
+    command.team = "explicit-team-1";
+    command.json = true;
+
+    const result = await command.execute();
+    expect(result).toBe(0);
+    expect((callsToListIssues[0] as { teamId: string | undefined }).teamId).toBe("explicit-team-1");
+  });
 });
 
 describe("Mutation commands", () => {

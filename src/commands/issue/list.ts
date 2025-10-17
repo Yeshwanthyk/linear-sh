@@ -20,6 +20,7 @@ Filters:
   - --team: Restrict to a specific team (defaults to config.defaults.teamId when absent).
   - --state: Accepts workflow state name or ID; resolved within the selected team.
   - --assignee: Match by user ID, email, or display name.
+  - --project: Filter by project ID (config option available for future Linear API support).
   - --limit: Cap the number of results (defaults to 50 when omitted).
 
 Outputs:
@@ -55,11 +56,17 @@ Failure Modes:
     required: false,
   });
 
+  project = Option.String("--project", {
+    description: "Filter by project ID",
+    required: false,
+  });
+
   async execute(): Promise<number> {
     return this.withContext(async (context) => {
       const teamFilter = normalizeOptionString(this.team) ?? context.config.defaults.teamId;
-      const stateFilter = normalizeOptionString(this.state);
+      const stateFilter = normalizeOptionString(this.state) ?? context.config.defaults.workflowStateId;
       const assigneeFilter = normalizeOptionString(this.assignee);
+      const projectFilter = normalizeOptionString(this.project) ?? context.config.defaults.projectId;
       const limitValue = normalizeOptionString(this.limit);
       const limit = limitValue ? Number.parseInt(limitValue, 10) : undefined;
 
@@ -67,6 +74,7 @@ Failure Modes:
         teamId: teamFilter,
         stateId: await resolveStateId(context, stateFilter, teamFilter),
         assigneeId: await resolveAssigneeId(context, assigneeFilter, teamFilter),
+        projectId: projectFilter,
         limit,
       });
 
