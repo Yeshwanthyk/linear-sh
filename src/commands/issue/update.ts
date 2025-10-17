@@ -1,4 +1,5 @@
 import { Command, Option } from "clipanion";
+import enquirer from "enquirer";
 
 import type { CommandContext } from "../base-command";
 import { IssueBaseCommand, ISSUE_USAGE_CATEGORY } from "./base";
@@ -26,6 +27,7 @@ Behavior:
 
   - Builds a minimal update payload; skips the mutation if no fields or comment are supplied.
   - Resolves state/assignee IDs relative to the issue's team (falling back to config defaults).
+  - When no update flags are provided and stdin is interactive, prompts for a comment.
   - Executes comment creation only when the initial update succeeds.
 
 Outputs:
@@ -35,7 +37,7 @@ Outputs:
 
 Failure Modes:
 
-  - Warns and exits 0 when no actionable flags are provided.
+  - Warns and exits 0 when no actionable flags are provided and no comment is entered.
   - Surfaces Linear API validation errors (e.g. bad state/assignee).
 `,
   });
@@ -75,14 +77,24 @@ Failure Modes:
       const issueRef = this.resolveIssueRef(context);
       const issue = await context.service.getIssue(issueRef);
 
-      const updateInput = await this.buildUpdateInput(context, issue.id, issue.teamId);
+      let updateInput = await this.buildUpdateInput(context, issue.id, issue.teamId);
+
+      // If no update options provided, prompt for comment if stdin is interactive
+      if (!updateInput && process.stdin.isTTY) {
+        const comment = await this.promptForComment();
+        if (comment) {
+          updateInput = { fields: {}, comment };
+        }
+      }
 
       if (!updateInput) {
         context.output.warn("No update options provided");
         return 0;
       }
 
-      const updated = await context.service.updateIssue(issue.id, updateInput.fields);
+      const updated = Object.keys(updateInput.fields).length > 0
+        ? await context.service.updateIssue(issue.id, updateInput.fields)
+        : issue;
 
       if (updateInput.comment) {
         await context.service.createComment({
@@ -102,6 +114,26 @@ Failure Modes:
 
       return 0;
     });
+  }
+
+  private async promptForComment(): Promise<string | undefined> {
+    const enquirerModule = enquirer as unknown as {
+      prompt<T>(questions: unknown): Promise<T>;
+    };
+
+    try {
+      const responses = await enquirerModule.prompt<{ comment: string }>([
+        {
+          type: "input",
+          name: "comment",
+          message: "Add a note or comment",
+          required: false,
+        },
+      ]);
+      return responses.comment?.trim() || undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   private async buildUpdateInput(
