@@ -22,7 +22,7 @@ Kick off active work on an issue by aligning Git and Linear in one step.
 Behavior:
 
   - Resolves the issue (defaults to branch key) and derives a branch name from the identifier/title unless \`--branch\` overrides it.
-  - Creates the branch if missing, otherwise checks it out.
+  - Creates the branch if missing, otherwise checks it out (unless \`--no-branch\` is set).
   - Transitions the issue to \`--state\` (default "In Progress") and optionally assigns it.
 
 Inputs:
@@ -31,16 +31,17 @@ Inputs:
   - --assign: Toggle to assign to the default assignee (config or flag).
   - --assignee: Explicit user to assign instead of defaults.
   - --branch: Override generated branch name.
+  - --no-branch: Skip branch creation/checkout, only update issue state.
 
 Outputs:
 
-  - Plain mode prints the branch + identifier via "Issue started".
-  - --json yields \`{ branch, issue: { id, identifier } }\`.
+  - Plain mode prints the branch + identifier via "Issue started" (or "Issue updated" if --no-branch).
+  - --json yields \`{ branch, issue: { id, identifier } }\` (branch omitted if --no-branch).
 
 Failure Modes:
 
   - Fails if no API key, issue not found, or state/assignee cannot be resolved.
-  - Git errors bubble up if branch creation or checkout fails.
+  - Git errors bubble up if branch creation or checkout fails (only if --no-branch is not set).
 `,
   });
 
@@ -69,18 +70,25 @@ Failure Modes:
     required: false,
   });
 
+  noBranch = Option.Boolean("--no-branch", false, {
+    description: "Skip branch creation/checkout",
+  });
+
   async execute(): Promise<number> {
     return this.withContext(async (context) => {
       const issueRef = this.resolveIssueRef(context);
       const details = await context.service.getIssue(issueRef);
 
-      const branchOverride = normalizeOptionString(this.branch);
-      const branchName = branchOverride ?? deriveBranchName(details.identifier, details.branchName, details.title);
+      let branchName: string | undefined;
+      if (this.noBranch !== true) {
+        const branchOverride = normalizeOptionString(this.branch);
+        branchName = branchOverride ?? deriveBranchName(details.identifier, details.branchName, details.title);
 
-      if (!IssueStartCommand.git.branchExists(branchName)) {
-        IssueStartCommand.git.createBranch(branchName);
-      } else {
-        IssueStartCommand.git.checkoutBranch(branchName);
+        if (!IssueStartCommand.git.branchExists(branchName)) {
+          IssueStartCommand.git.createBranch(branchName);
+        } else {
+          IssueStartCommand.git.checkoutBranch(branchName);
+        }
       }
 
       const updates = await this.prepareUpdates(context, details.teamId ?? context.config.defaults.teamId);
@@ -89,12 +97,18 @@ Failure Modes:
       }
 
       if (this.json) {
-        context.output.write({ branch: branchName, issue: { id: details.id, identifier: details.identifier } });
+        const output: Record<string, unknown> = { issue: { id: details.id, identifier: details.identifier } };
+        if (branchName) {
+          output.branch = branchName;
+        }
+        context.output.write(output);
       } else {
-        context.output.success("Issue started", {
-          branch: branchName,
-          identifier: details.identifier,
-        });
+        const message = this.noBranch === true ? "Issue updated" : "Issue started";
+        const output: Record<string, string> = { identifier: details.identifier };
+        if (branchName) {
+          output.branch = branchName;
+        }
+        context.output.success(message, output);
       }
 
       return 0;
