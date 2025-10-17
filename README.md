@@ -57,6 +57,23 @@ Example config file:
 }
 ```
 
+### Quickstart config (Effect migration testing)
+
+For local testing you can drop the following into `~/.config/linear-sh/config.json`:
+
+```json
+{
+  "apiKey": "lin_api_1bmEVZGXcNwEptAv9KbZlzc6P5soX43xFQNFKt3e",
+  "defaults": {
+    "teamId": "bfdd5200-c3bb-4b68-b75d-9943a66c15b6",
+    "projectId": "09f67dce-5202-45c8-b8f2-a474b114a27e",
+    "workflowStateId": "fefb35cc-3eaf-44e9-a81c-74c8fb548884"
+  }
+}
+```
+
+To grab fresh IDs from Linear, open the command palette (`⌘K` on macOS, `Ctrl+K` on Windows/Linux) and search for `Dev: Copy model UUID…`. The palette lets you copy the UUID for whichever team, project, or workflow state you have highlighted.
+
 Environment variables:
 
 - `LINEAR_API_KEY` (required)

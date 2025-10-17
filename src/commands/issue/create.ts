@@ -1,10 +1,11 @@
 import { Command, Option } from "clipanion";
 import enquirer from "enquirer";
+import { Effect } from "effect";
 
-import type { CommandContext } from "../base-command";
 import { BaseCommand } from "../base-command";
 import { normalizeOptionString, normalizeOptionStringArray, resolveAssigneeId } from "./helpers";
 import { ISSUE_USAGE_CATEGORY } from "./base";
+import { CliContext, runCommandEffect } from "../../runtime/effect";
 
 export class IssueCreateCommand extends BaseCommand {
   static paths = [["issue", "create"]];
@@ -70,76 +71,91 @@ Failure Modes:
 
   async execute(): Promise<number> {
     return this.withContext(async (context) => {
-      const input = await this.collectInput(context);
-      const issue = await context.service.createIssue(input);
+      const command = this;
+      const program = Effect.gen(function* (_) {
+        const issueInput = yield* _(command.collectInputEffect());
+        const ctx = yield* _(CliContext);
+        const issue = yield* _(Effect.promise(() => ctx.service.createIssue(issueInput)));
 
-      if (this.json) {
-        context.output.write({ issue });
-      } else {
-        context.output.success("Issue created", {
-          identifier: issue.identifier,
-          url: issue.url,
-        });
-      }
+        if (command.json) {
+          ctx.output.write({ issue });
+        } else {
+          ctx.output.success("Issue created", {
+            identifier: issue.identifier,
+            url: issue.url,
+          });
+        }
 
-      return 0;
+        return 0;
+      });
+
+      return runCommandEffect(context, program);
     });
   }
 
-  private async collectInput(context: CommandContext) {
-    let title = this.title;
-    let description = this.description;
+  private collectInputEffect() {
+    const command = this;
+    return Effect.gen<{ teamId: string; title: string; description?: string; assigneeId?: string; labelIds?: string[]; projectId?: string | null | undefined }>(function* (_) {
+      const context = yield* _(CliContext);
 
-    const enquirerModule = enquirer as unknown as {
-      prompt<T>(questions: unknown): Promise<T>;
-    };
+      let title = command.title;
+      let description = command.description;
 
-    if (!title || !description) {
-      const responses = await enquirerModule.prompt<{ title: string; description: string }>([
-        {
-          type: "input",
-          name: "title",
-          message: "Issue title",
-          initial: title ?? "",
-          required: true,
-        },
-        {
-          type: "input",
-          name: "description",
-          message: "Issue description",
-          initial: description ?? "",
-        },
-      ]);
-      title = responses.title?.trim() ?? title;
-      description = responses.description?.trim() ?? description;
-    }
+      const enquirerModule = enquirer as unknown as {
+        prompt<T>(questions: unknown): Promise<T>;
+      };
 
-    if (!title) {
-      throw new Error("Issue title is required");
-    }
+      if (!title || !description) {
+        const responses = yield* _(Effect.promise(() =>
+          enquirerModule.prompt<{ title: string; description: string }>([
+            {
+              type: "input",
+              name: "title",
+              message: "Issue title",
+              initial: title ?? "",
+              required: true,
+            },
+            {
+              type: "input",
+              name: "description",
+              message: "Issue description",
+              initial: description ?? "",
+            },
+          ]),
+        ));
+        title = responses.title?.trim() ?? title;
+        description = responses.description?.trim() ?? description;
+      }
 
-    const teamId = normalizeOptionString(this.team) ?? context.config.defaults.teamId;
-    if (!teamId) {
-      throw new Error("Team ID is required (set via --team or config)");
-    }
+      if (!title) {
+        return yield* _(Effect.fail(new Error("Issue title is required")));
+      }
 
-    const assigneeId = await resolveAssigneeId(
-      context,
-      normalizeOptionString(this.assignee) ?? context.config.defaults.assigneeId,
-      teamId,
-    );
+      const teamId =
+        normalizeOptionString(command.team) ?? context.config.defaults.teamId;
+      if (!teamId) {
+        return yield* _(Effect.fail(new Error("Team ID is required (set via --team or config)")));
+      }
 
-    const labelIds = normalizeOptionStringArray(this.labels) ?? undefined;
+      const assigneeId = yield* _(Effect.promise(() =>
+        resolveAssigneeId(
+          context,
+          normalizeOptionString(command.assignee) ?? context.config.defaults.assigneeId,
+          teamId,
+        ),
+      ));
 
-    const projectId = context.config.defaults.projectId;
+      const labelIds = normalizeOptionStringArray(command.labels) ?? undefined;
+      const projectId = context.config.defaults.projectId;
 
-    return {
-      teamId,
-      title,
-      description,
-      assigneeId,
-      labelIds,
-      projectId,
-    };
+      return {
+        teamId,
+        title,
+        description,
+        assigneeId,
+        labelIds,
+        projectId,
+      };
+    });
   }
 }

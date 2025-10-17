@@ -5,6 +5,23 @@
 - `--json` – Emit machine-readable JSON where supported.
 - `--no-cache` – Disable metadata caching (workflow states, users) for the command.
 
+## Configuration Quick Reference
+
+- Drop your Linear credentials into `~/.config/linear-sh/config.json`. For testing, you can use:
+
+  ```json
+  {
+    "apiKey": "lin_api_1bmEVZGXcNwEptAv9KbZlzc6P5soX43xFQNFKt3e",
+    "defaults": {
+      "teamId": "bfdd5200-c3bb-4b68-b75d-9943a66c15b6",
+      "projectId": "09f67dce-5202-45c8-b8f2-a474b114a27e",
+      "workflowStateId": "fefb35cc-3eaf-44e9-a81c-74c8fb548884"
+    }
+  }
+  ```
+
+- Inside Linear, press `⌘K` / `Ctrl+K`, search for `Dev: Copy model UUID…`, and select the entity to copy its UUID for use as a default team, project, or workflow-state ID.
+
 ## Commands
 
 ### `linear-sh issue view [identifier]`

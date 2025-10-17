@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { BaseCommand } from "../base-command";
 import type { CommandContext } from "../base-command";
 import type { IssueDetails, IssueSummary } from "../../linear/client";
+import { LinearApiError } from "../../errors";
 import { IssueCreateCommand } from "./create";
 import { IssueIdCommand } from "./id";
 import { IssueListCommand } from "./list";
@@ -154,6 +155,21 @@ describe("IssueListCommand", () => {
     expect(result).toBe(0);
     expect((callsToListIssues[0] as { teamId: string | undefined }).teamId).toBe("explicit-team-1");
   });
+
+  test("surfaces list failures", async () => {
+    const { context, writes } = createTestContext({
+      service: {
+        listIssues: () => Promise.reject(new LinearApiError("List boom", 429)),
+      },
+    });
+
+    BaseCommand.setContextFactory(() => Promise.resolve(context));
+    const command = new IssueListCommand();
+
+    const result = await command.execute();
+    expect(result).toBe(1);
+    expect(writes[writes.length - 1]).toContain("ERROR:LinearApiError: List boom");
+  });
 });
 
 describe("Mutation commands", () => {
@@ -181,6 +197,28 @@ describe("Mutation commands", () => {
     const result = await command.execute();
     expect(result).toBe(0);
     expect((calls[0] as { teamId: string }).teamId).toBe("team-1");
+  });
+
+  test("IssueCreateCommand surfaces service failures", async () => {
+    const { context, writes } = createTestContext({
+      service: {
+        createIssue: () => Promise.reject(new LinearApiError("Linear explosion", 500)),
+      },
+      config: {
+        defaults: {
+          teamId: "team-1",
+        },
+      },
+    });
+
+    BaseCommand.setContextFactory(() => Promise.resolve(context));
+    const command = new IssueCreateCommand();
+    command.title = "Failing issue";
+    command.description = "Fails on purpose";
+
+    const result = await command.execute();
+    expect(result).toBe(1);
+    expect(writes[writes.length - 1]).toContain("ERROR:LinearApiError: Linear explosion");
   });
 
   test("IssueUpdateCommand resolves fields", async () => {

@@ -6,3 +6,4 @@ target = "bun"
 
 [test]
 root = "."
+preload = ["./test/preload.ts"]

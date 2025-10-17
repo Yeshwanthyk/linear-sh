@@ -1,10 +1,12 @@
 import { Command, Option } from "clipanion";
+import { Effect } from "effect";
 
 import type { CommandContext } from "../base-command";
 import { BaseCommand } from "../base-command";
 import type { IssueSummary } from "../../linear/client";
 import { normalizeOptionString, resolveAssigneeId, resolveStateId } from "./helpers";
 import { ISSUE_USAGE_CATEGORY } from "./base";
+import { CliContext, runCommandEffect } from "../../runtime/effect";
 
 export class IssueListCommand extends BaseCommand {
   static paths = [["issue", "list"]];
@@ -63,29 +65,45 @@ Failure Modes:
 
   async execute(): Promise<number> {
     return this.withContext(async (context) => {
-      const teamFilter = normalizeOptionString(this.team) ?? context.config.defaults.teamId;
-      const stateFilter = normalizeOptionString(this.state) ?? context.config.defaults.workflowStateId;
-      const assigneeFilter = normalizeOptionString(this.assignee);
-      const projectFilter = normalizeOptionString(this.project) ?? context.config.defaults.projectId;
-      const limitValue = normalizeOptionString(this.limit);
-      const limit = limitValue ? Number.parseInt(limitValue, 10) : undefined;
+      const command = this;
+      const program = Effect.gen(function* (_) {
+        const ctx = yield* _(CliContext);
 
-      const issues = await context.service.listIssues({
-        teamId: teamFilter,
-        stateId: await resolveStateId(context, stateFilter, teamFilter),
-        assigneeId: await resolveAssigneeId(context, assigneeFilter, teamFilter),
-        projectId: projectFilter,
-        limit,
+        const teamFilter = normalizeOptionString(command.team) ?? ctx.config.defaults.teamId;
+        const stateFilter = normalizeOptionString(command.state) ?? ctx.config.defaults.workflowStateId;
+        const assigneeFilter = normalizeOptionString(command.assignee);
+        const projectFilter = normalizeOptionString(command.project) ?? ctx.config.defaults.projectId;
+        const limitValue = normalizeOptionString(command.limit);
+        const limit = limitValue ? Number.parseInt(limitValue, 10) : undefined;
+
+        const resolvedStateId = yield* _(Effect.promise(() =>
+          resolveStateId(ctx, stateFilter, teamFilter),
+        ));
+        const resolvedAssigneeId = yield* _(Effect.promise(() =>
+          resolveAssigneeId(ctx, assigneeFilter, teamFilter),
+        ));
+
+        const issues = yield* _(Effect.promise(() =>
+          ctx.service.listIssues({
+            teamId: teamFilter,
+            stateId: resolvedStateId,
+            assigneeId: resolvedAssigneeId,
+            projectId: projectFilter,
+            limit,
+          }),
+        ));
+
+        if (command.json) {
+          ctx.output.write({ issues });
+          return 0;
+        }
+
+        const summary = yield* _(Effect.promise(() => command.enrichIssues(ctx, issues)));
+        ctx.output.write(formatIssueTable(summary));
+        return 0;
       });
 
-      if (this.json) {
-        context.output.write({ issues });
-        return 0;
-      }
-
-      const summary = await this.enrichIssues(context, issues);
-      context.output.write(formatIssueTable(summary));
-      return 0;
+      return runCommandEffect(context, program);
     });
   }
 
