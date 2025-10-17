@@ -1,17 +1,18 @@
+import { spawnSync } from "node:child_process";
 import { Command, Option } from "clipanion";
 import { Effect } from "effect";
-import { spawnSync } from "node:child_process";
 
-import { IssueBaseCommand, ISSUE_USAGE_CATEGORY } from "./base";
 import { CliContext, runCommandEffect } from "../../runtime/effect";
+import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
 
 export class IssuePrCommand extends IssueBaseCommand {
-  static paths = [["issue", "pr"]];
+	static paths = [["issue", "pr"]];
 
-  static usage = Command.Usage({
-    description: "Create a GitHub pull request seeded with Linear issue context",
-    category: ISSUE_USAGE_CATEGORY,
-    details: `
+	static usage = Command.Usage({
+		description:
+			"Create a GitHub pull request seeded with Linear issue context",
+		category: ISSUE_USAGE_CATEGORY,
+		details: `
 Use after preparing a branch to open a GitHub pull request that references the matching Linear issue.
 
 Prerequisites:
@@ -38,46 +39,65 @@ Failure Modes:
 
   - Throws when the issue lacks a public URL or when \`gh pr create\` exits non-zero.
 `,
-  });
+	});
 
-  static runGh = (args: string[]) => spawnSync("gh", args, { stdio: "inherit" });
+	static runGh = (args: string[]) =>
+		spawnSync("gh", args, { stdio: "inherit" });
 
-  draft = Option.Boolean("--draft", false, {
-    description: "Open PR as draft",
-  });
+	draft = Option.Boolean("--draft", false, {
+		description: "Open PR as draft",
+	});
 
-  async execute(): Promise<number> {
-    return this.withContext(async (context) => {
-      const program = Effect.gen(function* (_) {
-        const ctx = yield* _(CliContext);
-        const issueRef = yield* _(this.resolveIssueRefEffect());
-        const issue = yield* _(Effect.promise(() => ctx.service.getIssueDetails(issueRef)));
+	async execute(): Promise<number> {
+		return this.withContext(async (context) => {
+			const program = Effect.gen(
+				function* (_) {
+					const ctx = yield* _(CliContext);
+					const issueRef = yield* _(this.resolveIssueRefEffect());
+					const issue = yield* _(
+						Effect.promise(() => ctx.service.getIssueDetails(issueRef)),
+					);
 
-        if (!issue.url) {
-          return yield* _(Effect.fail(new Error("Issue does not have a URL to include in PR body")));
-        }
+					if (!issue.url) {
+						return yield* _(
+							Effect.fail(
+								new Error("Issue does not have a URL to include in PR body"),
+							),
+						);
+					}
 
-        const title = `[${issue.identifier}] ${issue.title}`;
-        const body = `${issue.title}\n\n${issue.url}`;
+					const title = `[${issue.identifier}] ${issue.title}`;
+					const body = `${issue.title}\n\n${issue.url}`;
 
-        const args = ["pr", "create", "--fill", "--title", title, "--body", body];
-        if (this.draft) {
-          args.push("--draft");
-        }
+					const args = [
+						"pr",
+						"create",
+						"--fill",
+						"--title",
+						title,
+						"--body",
+						body,
+					];
+					if (this.draft) {
+						args.push("--draft");
+					}
 
-        const result = yield* _(Effect.sync(() => IssuePrCommand.runGh(args)));
-        if (result.status !== 0) {
-          return yield* _(Effect.fail(new Error("gh pr create failed")));
-        }
+					const result = yield* _(
+						Effect.sync(() => IssuePrCommand.runGh(args)),
+					);
+					if (result.status !== 0) {
+						return yield* _(Effect.fail(new Error("gh pr create failed")));
+					}
 
-        ctx.output.success("Pull request created", {
-          issue: issue.identifier,
-        });
+					ctx.output.success("Pull request created", {
+						issue: issue.identifier,
+					});
 
-        return 0;
-      }.bind(this));
+					return 0;
+				}.bind(this),
+			);
 
-      return runCommandEffect(context, program);
-    });
-  }
+			return runCommandEffect(context, program);
+		});
+	}
 }

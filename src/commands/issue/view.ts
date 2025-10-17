@@ -1,18 +1,18 @@
 import { Command, Option } from "clipanion";
 import { Effect } from "effect";
 
-import { IssueBaseCommand, ISSUE_USAGE_CATEGORY } from "./base";
 import type { IssueDetails } from "../../linear/client";
-import { openInBrowser } from "../../utils/open";
 import { CliContext, runCommandEffect } from "../../runtime/effect";
+import { openInBrowser } from "../../utils/open";
+import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
 
 export class IssueViewCommand extends IssueBaseCommand {
-  static paths = [["issue", "view"]];
+	static paths = [["issue", "view"]];
 
-  static usage = Command.Usage({
-    description: "Display Linear issue details",
-    category: ISSUE_USAGE_CATEGORY,
-    details: `
+	static usage = Command.Usage({
+		description: "Display Linear issue details",
+		category: ISSUE_USAGE_CATEGORY,
+		details: `
 Use this command when you need the full context for a single Linear issue.
 
 Inputs:
@@ -31,68 +31,74 @@ Side Effects:
 
   - Launches the default browser when \`--web\` is provided.
 `,
-    examples: [["View current branch issue", "linear-sh issue view"], ["View specific issue", "linear-sh issue view ENG-123"], ["Open in browser", "linear-sh issue view -w"]],
-  });
+		examples: [
+			["View current branch issue", "linear-sh issue view"],
+			["View specific issue", "linear-sh issue view ENG-123"],
+			["Open in browser", "linear-sh issue view -w"],
+		],
+	});
 
-  open = Option.Boolean("-w,--web", false, {
-    description: "Open the issue in the default browser",
-  });
+	open = Option.Boolean("-w,--web", false, {
+		description: "Open the issue in the default browser",
+	});
 
-  async execute(): Promise<number> {
-    return this.withContext(async (context) => {
-      const program = Effect.gen(function* (_) {
-        const ctx = yield* _(CliContext);
-        const issueRef = yield* _(this.resolveIssueRefEffect());
-        const details = yield* _(Effect.promise(() => ctx.service.getIssueDetails(issueRef)));
+	async execute(): Promise<number> {
+		return this.withContext(async (context) => {
+			const program = Effect.gen(
+				function* (_) {
+					const ctx = yield* _(CliContext);
+					const issueRef = yield* _(this.resolveIssueRefEffect());
+					const details = yield* _(
+						Effect.promise(() => ctx.service.getIssueDetails(issueRef)),
+					);
 
-        if (this.open && details.url) {
-          yield* _(Effect.promise(() => openInBrowser(details.url!)));
-        }
+					if (this.open && details.url) {
+						yield* _(Effect.promise(() => openInBrowser(details.url!)));
+					}
 
-        if (this.json) {
-          ctx.output.write({ issue: details });
-        } else {
-          ctx.output.write(formatIssueDetails(details));
-        }
+					if (this.json) {
+						ctx.output.write({ issue: details });
+					} else {
+						ctx.output.write(formatIssueDetails(details));
+					}
 
-        return 0;
-      }.bind(this));
+					return 0;
+				}.bind(this),
+			);
 
-      return runCommandEffect(context, program);
-    });
-  }
+			return runCommandEffect(context, program);
+		});
+	}
 }
 
 function formatIssueDetails(details: IssueDetails): string {
-  const lines = [
-    `${details.identifier ?? details.id} — ${details.title}`,
-  ];
+	const lines = [`${details.identifier ?? details.id} — ${details.title}`];
 
-  if (details.stateName) {
-    lines.push(`Status: ${details.stateName}`);
-  }
+	if (details.stateName) {
+		lines.push(`Status: ${details.stateName}`);
+	}
 
-  if (details.assigneeName) {
-    lines.push(`Assignee: ${details.assigneeName}`);
-  }
+	if (details.assigneeName) {
+		lines.push(`Assignee: ${details.assigneeName}`);
+	}
 
-  if (details.labels.length > 0) {
-    lines.push(
-      `Labels: ${details.labels.map((label) => label.name).join(", ")}`,
-    );
-  }
+	if (details.labels.length > 0) {
+		lines.push(
+			`Labels: ${details.labels.map((label) => label.name).join(", ")}`,
+		);
+	}
 
-  if (details.priorityLabel) {
-    lines.push(`Priority: ${details.priorityLabel}`);
-  }
+	if (details.priorityLabel) {
+		lines.push(`Priority: ${details.priorityLabel}`);
+	}
 
-  if (details.url) {
-    lines.push(`URL: ${details.url}`);
-  }
+	if (details.url) {
+		lines.push(`URL: ${details.url}`);
+	}
 
-  if (details.description) {
-    lines.push("", details.description.trim());
-  }
+	if (details.description) {
+		lines.push("", details.description.trim());
+	}
 
-  return lines.join("\n");
+	return lines.join("\n");
 }

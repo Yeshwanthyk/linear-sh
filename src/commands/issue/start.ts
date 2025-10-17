@@ -1,25 +1,30 @@
 import { Command, Option } from "clipanion";
 import { Effect } from "effect";
 
-import type { CommandContext } from "../base-command";
-import { IssueBaseCommand, ISSUE_USAGE_CATEGORY } from "./base";
-import { normalizeOptionString, resolveAssigneeId, resolveStateId } from "./helpers";
 import {
-  branchExists,
-  checkoutBranch,
-  createBranch,
-  sanitizeBranchName,
+	branchExists,
+	checkoutBranch,
+	createBranch,
+	sanitizeBranchName,
 } from "../../git/branch";
-import { CliContext, runCommandEffect } from "../../runtime/effect";
 import type { IssueSummary } from "../../linear/client";
+import { CliContext, runCommandEffect } from "../../runtime/effect";
+import type { CommandContext } from "../base-command";
+import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
+import {
+	normalizeOptionString,
+	resolveAssigneeId,
+	resolveStateId,
+} from "./helpers";
 
 export class IssueStartCommand extends IssueBaseCommand {
-  static paths = [["issue", "start"]];
+	static paths = [["issue", "start"]];
 
-  static usage = Command.Usage({
-    description: "Start working on an issue: create branch and transition state",
-    category: ISSUE_USAGE_CATEGORY,
-    details: `
+	static usage = Command.Usage({
+		description:
+			"Start working on an issue: create branch and transition state",
+		category: ISSUE_USAGE_CATEGORY,
+		details: `
 Kick off active work on an issue by aligning Git and Linear in one step.
 
 Behavior:
@@ -46,141 +51,167 @@ Failure Modes:
   - Fails if no API key, issue not found, or state/assignee cannot be resolved.
   - Git errors bubble up if branch creation or checkout fails (only if --no-branch is not set).
 `,
-  });
+	});
 
-  static git = {
-    branchExists,
-    createBranch,
-    checkoutBranch,
-  };
+	static git = {
+		branchExists,
+		createBranch,
+		checkoutBranch,
+	};
 
-  state = Option.String("--state", {
-    description: "Workflow state to transition into",
-    required: false,
-  });
+	state = Option.String("--state", {
+		description: "Workflow state to transition into",
+		required: false,
+	});
 
-  assign = Option.Boolean("--assign", false, {
-    description: "Assign issue to default assignee or --assignee",
-  });
+	assign = Option.Boolean("--assign", false, {
+		description: "Assign issue to default assignee or --assignee",
+	});
 
-  assignee = Option.String("--assignee", {
-    description: "Assign to specific user (ID, email, or name)",
-    required: false,
-  });
+	assignee = Option.String("--assignee", {
+		description: "Assign to specific user (ID, email, or name)",
+		required: false,
+	});
 
-  branch = Option.String("--branch", {
-    description: "Override branch name",
-    required: false,
-  });
+	branch = Option.String("--branch", {
+		description: "Override branch name",
+		required: false,
+	});
 
-  noBranch = Option.Boolean("--no-branch", false, {
-    description: "Skip branch creation/checkout",
-  });
+	noBranch = Option.Boolean("--no-branch", false, {
+		description: "Skip branch creation/checkout",
+	});
 
-  async execute(): Promise<number> {
-    return this.withContext(async (context) => {
-      const program = Effect.gen(function* (_) {
-        const ctx = yield* _(CliContext);
-        const issueRef = this.resolveIssueRef(ctx);
-        const details = yield* _(Effect.promise(() => ctx.service.getIssue(issueRef)));
+	async execute(): Promise<number> {
+		return this.withContext(async (context) => {
+			const program = Effect.gen(
+				function* (_) {
+					const ctx = yield* _(CliContext);
+					const issueRef = this.resolveIssueRef(ctx);
+					const details = yield* _(
+						Effect.promise(() => ctx.service.getIssue(issueRef)),
+					);
 
-        const branchName = yield* _(this.handleBranchEffect(details));
-        const updates = yield* _(this.prepareUpdatesEffect(details, ctx));
+					const branchName = yield* _(this.handleBranchEffect(details));
+					const updates = yield* _(this.prepareUpdatesEffect(details, ctx));
 
-        if (updates.stateId || updates.assigneeId) {
-          yield* _(Effect.promise(() => ctx.service.updateIssue(details.id, updates)));
-        }
+					if (updates.stateId || updates.assigneeId) {
+						yield* _(
+							Effect.promise(() =>
+								ctx.service.updateIssue(details.id, updates),
+							),
+						);
+					}
 
-        if (this.json) {
-          const output: Record<string, unknown> = {
-            issue: { id: details.id, identifier: details.identifier },
-          };
-          if (branchName) {
-            output.branch = branchName;
-          }
-          ctx.output.write(output);
-        } else {
-          const message = this.noBranch === true ? "Issue updated" : "Issue started";
-          const payload: Record<string, string> = { identifier: details.identifier };
-          if (branchName) {
-            payload.branch = branchName;
-          }
-          ctx.output.success(message, payload);
-        }
+					if (this.json) {
+						const output: Record<string, unknown> = {
+							issue: { id: details.id, identifier: details.identifier },
+						};
+						if (branchName) {
+							output.branch = branchName;
+						}
+						ctx.output.write(output);
+					} else {
+						const message =
+							this.noBranch === true ? "Issue updated" : "Issue started";
+						const payload: Record<string, string> = {
+							identifier: details.identifier,
+						};
+						if (branchName) {
+							payload.branch = branchName;
+						}
+						ctx.output.success(message, payload);
+					}
 
-        return 0;
-      }.bind(this));
+					return 0;
+				}.bind(this),
+			);
 
-      return runCommandEffect(context, program);
-    });
-  }
+			return runCommandEffect(context, program);
+		});
+	}
 
-  private handleBranchEffect(details: IssueSummary) {
-    return Effect.gen(function* (_) {
-      if (this.noBranch === true) {
-        return undefined;
-      }
+	private handleBranchEffect(details: IssueSummary) {
+		return Effect.gen(
+			function* (_) {
+				if (this.noBranch === true) {
+					return undefined;
+				}
 
-      const branchOverride = normalizeOptionString(this.branch);
-      const branchName = branchOverride ?? deriveBranchName(details.identifier, details.branchName, details.title);
+				const branchOverride = normalizeOptionString(this.branch);
+				const branchName =
+					branchOverride ??
+					deriveBranchName(
+						details.identifier,
+						details.branchName,
+						details.title,
+					);
 
-      yield* _(Effect.sync(() => {
-        if (!IssueStartCommand.git.branchExists(branchName)) {
-          IssueStartCommand.git.createBranch(branchName);
-        } else {
-          IssueStartCommand.git.checkoutBranch(branchName);
-        }
-      }));
+				yield* _(
+					Effect.sync(() => {
+						if (!IssueStartCommand.git.branchExists(branchName)) {
+							IssueStartCommand.git.createBranch(branchName);
+						} else {
+							IssueStartCommand.git.checkoutBranch(branchName);
+						}
+					}),
+				);
 
-      return branchName;
-    }.bind(this));
-  }
+				return branchName;
+			}.bind(this),
+		);
+	}
 
-  private prepareUpdatesEffect(
-    details: IssueSummary,
-    context: CommandContext,
-  ) {
-    const updates: { stateId?: string; assigneeId?: string } = {};
+	private prepareUpdatesEffect(details: IssueSummary, context: CommandContext) {
+		const updates: { stateId?: string; assigneeId?: string } = {};
 
-    const targetTeam = details.teamId ?? context.config.defaults.teamId;
+		const targetTeam = details.teamId ?? context.config.defaults.teamId;
 
-    const effect = Effect.gen(function* (_) {
-      const desiredState = normalizeOptionString(this.state) ?? "In Progress";
-      const stateId = yield* _(Effect.promise(() =>
-        resolveStateId(context, desiredState, targetTeam),
-      ));
-      if (stateId) {
-        updates.stateId = stateId;
-      }
+		const effect = Effect.gen(
+			function* (_) {
+				const desiredState = normalizeOptionString(this.state) ?? "In Progress";
+				const stateId = yield* _(
+					Effect.promise(() =>
+						resolveStateId(context, desiredState, targetTeam),
+					),
+				);
+				if (stateId) {
+					updates.stateId = stateId;
+				}
 
-      if (this.assign || this.assignee) {
-        const assigneeSource = normalizeOptionString(this.assignee) ?? context.config.defaults.assigneeId;
-        if (assigneeSource) {
-          const assigneeId = yield* _(Effect.promise(() =>
-            resolveAssigneeId(context, assigneeSource, targetTeam),
-          ));
-          if (assigneeId) {
-            updates.assigneeId = assigneeId;
-          }
-        }
-      }
+				if (this.assign || this.assignee) {
+					const assigneeSource =
+						normalizeOptionString(this.assignee) ??
+						context.config.defaults.assigneeId;
+					if (assigneeSource) {
+						const assigneeId = yield* _(
+							Effect.promise(() =>
+								resolveAssigneeId(context, assigneeSource, targetTeam),
+							),
+						);
+						if (assigneeId) {
+							updates.assigneeId = assigneeId;
+						}
+					}
+				}
 
-      return updates;
-    }.bind(this));
+				return updates;
+			}.bind(this),
+		);
 
-    return effect;
-  }
+		return effect;
+	}
 }
 
 function deriveBranchName(
-  identifier: string,
-  suggested?: string | null,
-  title?: string,
+	identifier: string,
+	suggested?: string | null,
+	title?: string,
 ): string {
-  if (suggested) {
-    return suggested;
-  }
+	if (suggested) {
+		return suggested;
+	}
 
-  const slug = title ? sanitizeBranchName(title) : identifier.toLowerCase();
-  return `${identifier.toLowerCase()}/${slug}`;
+	const slug = title ? sanitizeBranchName(title) : identifier.toLowerCase();
+	return `${identifier.toLowerCase()}/${slug}`;
 }

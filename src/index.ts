@@ -15,11 +15,11 @@ import { IssueUrlCommand } from "./commands/issue/url";
 import { IssueViewCommand } from "./commands/issue/view";
 
 class RootCommand extends BaseCommand {
-  static paths = [[]];
+	static paths = [[]];
 
-  static usage = Command.Usage({
-    description: "Linear CLI entrypoint",
-    details: `
+	static usage = Command.Usage({
+		description: "Linear CLI entrypoint",
+		details: `
 Run without subcommands to validate configuration.
 
 Behavior:
@@ -32,59 +32,62 @@ Outputs:
   - Plain mode logs \"Linear CLI ready\" with API host + defaults.
   - --json still works globally and affects any subcommand.
 `,
-  });
+	});
 
-  async execute(): Promise<number> {
-    return this.withContext((context) => {
-      const hasKey = Boolean(context.config.apiKey);
+	async execute(): Promise<number> {
+		return this.withContext(
+			(context) => {
+				const hasKey = Boolean(context.config.apiKey);
 
-      if (!hasKey) {
-        context.output.warn(
-          "No Linear API key configured. Set LINEAR_API_KEY or provide config files.",
-        );
-        return Promise.resolve(1);
-      }
+				if (!hasKey) {
+					context.output.warn(
+						"No Linear API key configured. Set LINEAR_API_KEY or provide config files.",
+					);
+					return Promise.resolve(1);
+				}
 
-      context.output.success("Linear CLI ready", {
-        apiHost: context.config.apiHost,
-        defaults: context.config.defaults,
-      });
+				context.output.success("Linear CLI ready", {
+					apiHost: context.config.apiHost,
+					defaults: context.config.defaults,
+				});
 
-      return Promise.resolve(0);
-    }, { requireApiKey: false });
-  }
+				return Promise.resolve(0);
+			},
+			{ requireApiKey: false },
+		);
+	}
 }
 
 const cli = new Cli({
-  binaryLabel: "Linear CLI",
-  binaryName: "linear-sh",
-  binaryVersion: packageJson.version ?? "0.0.0",
+	binaryLabel: "Linear CLI",
+	binaryName: "linear-sh",
+	binaryVersion: packageJson.version ?? "0.0.0",
 });
 
 const commandClasses = [
-  CompactHelpCommand,
-  DetailedHelpCommand,
-  RootCommand,
-  IssueViewCommand,
-  IssueListCommand,
-  IssueIdCommand,
-  IssueTitleCommand,
-  IssueUrlCommand,
-  IssueCreateCommand,
-  IssueUpdateCommand,
-  IssueStartCommand,
-  IssuePrCommand,
+	CompactHelpCommand,
+	DetailedHelpCommand,
+	RootCommand,
+	IssueViewCommand,
+	IssueListCommand,
+	IssueIdCommand,
+	IssueTitleCommand,
+	IssueUrlCommand,
+	IssueCreateCommand,
+	IssueUpdateCommand,
+	IssueStartCommand,
+	IssuePrCommand,
 ];
 
 for (const commandClass of commandClasses) {
-  cli.register(commandClass);
+	cli.register(commandClass);
 }
 
 const rawArgs = process.argv.slice(2);
 const args = rawArgs[0] === "--" ? rawArgs.slice(1) : rawArgs;
 
 void cli.runExit(args, {
-  stdin: process.stdin,
-  stdout: process.stdout,
-  stderr: process.stderr,
+	stdin: process.stdin,
+	stdout: process.stdout,
+	stderr: process.stderr,
 });

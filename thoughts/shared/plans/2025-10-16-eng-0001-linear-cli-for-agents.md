@@ -49,7 +49,7 @@ Scaffold the Bun TypeScript project, establish CLI entrypoint, and implement con
   },
   "scripts": {
     "build": "bun build src/index.ts --outdir bin --target bun",
-    "lint": "bunx eslint .",
+    "lint": "bunx biome check .",
     "test": "bun test"
   },
   "dependencies": {

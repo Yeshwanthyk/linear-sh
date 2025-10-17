@@ -100,8 +100,11 @@ Refer to [`docs/usage.md`](docs/usage.md) for a complete command reference and e
 Common workflows:
 
 ```bash
-# Formatting and linting
+# Linting (Biome check)
 bun run lint
+
+# Format (Biome write)
+bun run format
 
 # Type checking
 bun run typecheck

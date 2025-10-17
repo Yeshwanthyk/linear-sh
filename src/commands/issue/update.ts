@@ -1,19 +1,24 @@
 import { Command, Option } from "clipanion";
-import enquirer from "enquirer";
 import { Effect } from "effect";
+import enquirer from "enquirer";
 
-import { IssueBaseCommand, ISSUE_USAGE_CATEGORY } from "./base";
-import { normalizeOptionString, normalizeOptionStringArray, resolveAssigneeId, resolveStateId } from "./helpers";
 import { CliContext, runCommandEffect } from "../../runtime/effect";
 import type { CommandContext } from "../base-command";
+import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
+import {
+	normalizeOptionString,
+	normalizeOptionStringArray,
+	resolveAssigneeId,
+	resolveStateId,
+} from "./helpers";
 
 export class IssueUpdateCommand extends IssueBaseCommand {
-  static paths = [["issue", "update"]];
+	static paths = [["issue", "update"]];
 
-  static usage = Command.Usage({
-    description: "Update a Linear issue",
-    category: ISSUE_USAGE_CATEGORY,
-    details: `
+	static usage = Command.Usage({
+		description: "Update a Linear issue",
+		category: ISSUE_USAGE_CATEGORY,
+		details: `
 Batch multiple Linear mutations (status, assignee, labels, etc.) into a single call.
 
 Inputs:
@@ -42,164 +47,182 @@ Failure Modes:
   - Warns and exits 0 when no actionable flags are provided and no comment is entered.
   - Surfaces Linear API validation errors (e.g. bad state/assignee).
 `,
-  });
+	});
 
-  status = Option.String("--status", {
-    description: "Set workflow state (name or ID)",
-    required: false,
-  });
+	status = Option.String("--status", {
+		description: "Set workflow state (name or ID)",
+		required: false,
+	});
 
-  comment = Option.String("--comment", {
-    description: "Add a comment after updating",
-    required: false,
-  });
+	comment = Option.String("--comment", {
+		description: "Add a comment after updating",
+		required: false,
+	});
 
-  assignee = Option.String("--assignee", {
-    description: "Assign to user (ID, email, or name)",
-    required: false,
-  });
+	assignee = Option.String("--assignee", {
+		description: "Assign to user (ID, email, or name)",
+		required: false,
+	});
 
-  titleUpdate = Option.String("--title", {
-    description: "Update issue title",
-    required: false,
-  });
+	titleUpdate = Option.String("--title", {
+		description: "Update issue title",
+		required: false,
+	});
 
-  descriptionUpdate = Option.String("--description", {
-    description: "Update issue description",
-    required: false,
-  });
+	descriptionUpdate = Option.String("--description", {
+		description: "Update issue description",
+		required: false,
+	});
 
-  labels = Option.Array("--label", {
-    description: "Replace labels with provided IDs",
-    required: false,
-  });
+	labels = Option.Array("--label", {
+		description: "Replace labels with provided IDs",
+		required: false,
+	});
 
-  async execute(): Promise<number> {
-    return this.withContext(async (context) => {
-      const command = this;
-      const program = Effect.gen(function* (_) {
-        const ctx = yield* _(CliContext);
-        const issueRef = command.resolveIssueRef(ctx);
-        const issue = yield* _(Effect.promise(() => ctx.service.getIssue(issueRef)));
+	async execute(): Promise<number> {
+		return this.withContext(async (context) => {
+			const command = this;
+			const program = Effect.gen(function* (_) {
+				const ctx = yield* _(CliContext);
+				const issueRef = command.resolveIssueRef(ctx);
+				const issue = yield* _(
+					Effect.promise(() => ctx.service.getIssue(issueRef)),
+				);
 
-        let updateInput = yield* _(command.buildUpdateInputEffect(ctx, issue.id, issue.teamId));
+				let updateInput = yield* _(
+					command.buildUpdateInputEffect(ctx, issue.id, issue.teamId),
+				);
 
-        if (!updateInput) {
-          const interactive = yield* _(Effect.sync(() => process.stdin.isTTY === true));
-          if (interactive) {
-            const comment = yield* _(command.promptForCommentEffect());
-            if (comment) {
-              updateInput = { fields: {}, comment };
-            }
-          }
-        }
+				if (!updateInput) {
+					const interactive = yield* _(
+						Effect.sync(() => process.stdin.isTTY === true),
+					);
+					if (interactive) {
+						const comment = yield* _(command.promptForCommentEffect());
+						if (comment) {
+							updateInput = { fields: {}, comment };
+						}
+					}
+				}
 
-        if (!updateInput) {
-          ctx.output.warn("No update options provided");
-          return 0;
-        }
+				if (!updateInput) {
+					ctx.output.warn("No update options provided");
+					return 0;
+				}
 
-        const hasFieldUpdates = Object.keys(updateInput.fields).length > 0;
-        const updated = hasFieldUpdates
-          ? yield* _(Effect.promise(() => ctx.service.updateIssue(issue.id, updateInput!.fields)))
-          : issue;
+				const hasFieldUpdates = Object.keys(updateInput.fields).length > 0;
+				const updated = hasFieldUpdates
+					? yield* _(
+							Effect.promise(() =>
+								ctx.service.updateIssue(issue.id, updateInput!.fields),
+							),
+						)
+					: issue;
 
-        if (updateInput.comment) {
-          yield* _(Effect.promise(() =>
-            ctx.service.createComment({
-              issueId: issue.id,
-              body: updateInput!.comment!,
-            }),
-          ));
-        }
+				if (updateInput.comment) {
+					yield* _(
+						Effect.promise(() =>
+							ctx.service.createComment({
+								issueId: issue.id,
+								body: updateInput!.comment!,
+							}),
+						),
+					);
+				}
 
-        if (command.json) {
-          ctx.output.write({ issue: updated });
-        } else {
-          ctx.output.success("Issue updated", {
-            identifier: updated.identifier,
-            stateId: updated.stateId,
-          });
-        }
+				if (command.json) {
+					ctx.output.write({ issue: updated });
+				} else {
+					ctx.output.success("Issue updated", {
+						identifier: updated.identifier,
+						stateId: updated.stateId,
+					});
+				}
 
-        return 0;
-      });
+				return 0;
+			});
 
-      return runCommandEffect(context, program);
-    });
-  }
+			return runCommandEffect(context, program);
+		});
+	}
 
-  private promptForCommentEffect() {
-    const enquirerModule = enquirer as unknown as {
-      prompt<T>(questions: unknown): Promise<T>;
-    };
+	private promptForCommentEffect() {
+		const enquirerModule = enquirer as unknown as {
+			prompt<T>(questions: unknown): Promise<T>;
+		};
 
-    return Effect.tryPromise({
-      try: () =>
-        enquirerModule
-          .prompt<{ comment: string }>([
-            {
-              type: "input",
-              name: "comment",
-              message: "Add a note or comment",
-              required: false,
-            },
-          ])
-          .then((responses) => responses.comment?.trim() || undefined),
-      catch: () => undefined,
-    });
-  }
+		return Effect.tryPromise({
+			try: () =>
+				enquirerModule
+					.prompt<{ comment: string }>([
+						{
+							type: "input",
+							name: "comment",
+							message: "Add a note or comment",
+							required: false,
+						},
+					])
+					.then((responses) => responses.comment?.trim() || undefined),
+			catch: () => undefined,
+		});
+	}
 
-  private buildUpdateInputEffect(
-    context: CommandContext,
-    issueId: string,
-    teamId?: string | null,
-  ) {
-    const fields: Record<string, unknown> = {};
+	private buildUpdateInputEffect(
+		context: CommandContext,
+		issueId: string,
+		teamId?: string | null,
+	) {
+		const fields: Record<string, unknown> = {};
 
-    const titleValue = normalizeOptionString(this.titleUpdate);
-    if (titleValue) {
-      fields.title = this.titleUpdate;
-    }
+		const titleValue = normalizeOptionString(this.titleUpdate);
+		if (titleValue) {
+			fields.title = this.titleUpdate;
+		}
 
-    if (this.descriptionUpdate !== undefined) {
-      fields.description = this.descriptionUpdate;
-    }
+		if (this.descriptionUpdate !== undefined) {
+			fields.description = this.descriptionUpdate;
+		}
 
-    const labelIds = normalizeOptionStringArray(this.labels);
-    if (labelIds) {
-      fields.labelIds = labelIds;
-    }
+		const labelIds = normalizeOptionStringArray(this.labels);
+		if (labelIds) {
+			fields.labelIds = labelIds;
+		}
 
-    return Effect.gen(function* (_) {
-      const targetTeam = teamId ?? context.config.defaults.teamId;
-      const statusValue = normalizeOptionString(this.status);
-      if (statusValue) {
-        const stateId = yield* _(Effect.promise(() =>
-          resolveStateId(context, statusValue, targetTeam),
-        ));
-        fields.stateId = stateId;
-      }
+		return Effect.gen(
+			function* (_) {
+				const targetTeam = teamId ?? context.config.defaults.teamId;
+				const statusValue = normalizeOptionString(this.status);
+				if (statusValue) {
+					const stateId = yield* _(
+						Effect.promise(() =>
+							resolveStateId(context, statusValue, targetTeam),
+						),
+					);
+					fields.stateId = stateId;
+				}
 
-      const assigneeValue = normalizeOptionString(this.assignee);
-      if (assigneeValue) {
-        const assigneeId = yield* _(Effect.promise(() =>
-          resolveAssigneeId(context, assigneeValue, targetTeam),
-        ));
-        fields.assigneeId = assigneeId;
-      }
+				const assigneeValue = normalizeOptionString(this.assignee);
+				if (assigneeValue) {
+					const assigneeId = yield* _(
+						Effect.promise(() =>
+							resolveAssigneeId(context, assigneeValue, targetTeam),
+						),
+					);
+					fields.assigneeId = assigneeId;
+				}
 
-      const hasChanges = Object.keys(fields).length > 0;
-      const comment = this.comment;
+				const hasChanges = Object.keys(fields).length > 0;
+				const comment = this.comment;
 
-      if (!hasChanges && !comment) {
-        return undefined;
-      }
+				if (!hasChanges && !comment) {
+					return undefined;
+				}
 
-      return {
-        fields,
-        comment,
-      };
-    }.bind(this));
-  }
+				return {
+					fields,
+					comment,
+				};
+			}.bind(this),
+		);
+	}
 }
