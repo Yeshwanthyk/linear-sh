@@ -15,8 +15,67 @@ function normaliseCategory(category?: string | null): string {
   return trimmed && trimmed.length > 0 ? trimmed : "General";
 }
 
-export class DetailedHelpCommand extends Command {
+export class CompactHelpCommand extends Command {
   static paths = [[`-h`], [`--help`], [`help`]];
+
+  async execute(): Promise<number> {
+    const definitions = this.cli.definitions({ colored: false }) as CommandDefinition[];
+    const grouped = new Map<string, CommandDefinition[]>();
+
+    for (const def of definitions) {
+      const category = normaliseCategory(def.category);
+      if (!grouped.has(category)) {
+        grouped.set(category, []);
+      }
+      grouped.get(category)!.push(def);
+    }
+
+    const categories = Array.from(grouped.keys()).sort((a, b) => {
+      if (a === "General" && b !== "General") return -1;
+      if (b === "General" && a !== "General") return 1;
+      return a.localeCompare(b);
+    });
+
+    const headerLabel = this.cli.binaryLabel ?? this.cli.binaryName ?? "linear-sh";
+    const headerVersion = this.cli.binaryVersion ? ` ${this.cli.binaryVersion}` : "";
+    const header = `${headerLabel}${headerVersion}`;
+    const lines: string[] = [];
+
+    lines.push(header);
+    lines.push("=".repeat(header.length));
+    lines.push("");
+    lines.push("Usage: linear-sh <command> [options]");
+    lines.push("");
+    lines.push("Commands:");
+
+    for (const category of categories) {
+      const commands = grouped.get(category)!;
+      commands.sort((a, b) => a.usage.localeCompare(b.usage));
+
+      for (const command of commands) {
+        if (command.description && command.description.trim().length > 0) {
+          const summary = command.description.split('.')[0] + '.';
+          lines.push(`  ${command.usage.padEnd(20)} ${summary}`);
+        } else {
+          lines.push(`  ${command.usage}`);
+        }
+      }
+    }
+
+    lines.push("");
+    lines.push("Options:");
+    lines.push("  --help-verbose  Show detailed help with all options and examples");
+    lines.push("  --version       Show version number");
+    lines.push("");
+    lines.push("Run 'linear-sh --help-verbose' for detailed command information.");
+
+    this.context.stdout.write(`${lines.join("\n")}`);
+    return 0;
+  }
+}
+
+export class DetailedHelpCommand extends Command {
+  static paths = [[`--help-verbose`]];
 
   async execute(): Promise<number> {
     const definitions = this.cli.definitions({ colored: false }) as CommandDefinition[];

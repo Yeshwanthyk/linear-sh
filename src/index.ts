@@ -3,7 +3,7 @@ import { Cli, Command } from "clipanion";
 
 import packageJson from "../package.json" assert { type: "json" };
 import { BaseCommand } from "./commands/base-command";
-import { DetailedHelpCommand } from "./commands/help";
+import { CompactHelpCommand, DetailedHelpCommand } from "./commands/help";
 import { IssueCreateCommand } from "./commands/issue/create";
 import { IssueIdCommand } from "./commands/issue/id";
 import { IssueListCommand } from "./commands/issue/list";
@@ -62,6 +62,7 @@ const cli = new Cli({
 });
 
 const commandClasses = [
+  CompactHelpCommand,
   DetailedHelpCommand,
   RootCommand,
   IssueViewCommand,
