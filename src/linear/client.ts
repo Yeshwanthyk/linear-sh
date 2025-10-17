@@ -1,4 +1,4 @@
-import { LinearClient } from "@linear/sdk";
+import { LinearClient, LinearDocument } from "@linear/sdk";
 
 import type { LinearConfig } from "../config";
 import { LinearApiError } from "../errors";
@@ -89,7 +89,7 @@ interface LinearClientLike {
   issue(id: string): PromiseLike<LinearIssueEntity> | undefined;
   searchIssues(term: string, variables?: Record<string, unknown>): PromiseLike<IssueSearchPayloadEntity>;
   issues(variables: Record<string, unknown>): PromiseLike<IssueConnectionEntity>;
-  issueCreate(variables: { input: Record<string, unknown> }): PromiseLike<IssueMutationPayload>;
+  createIssue(variables: { input: Record<string, unknown> }): PromiseLike<IssueMutationPayload>;
   issueUpdate(variables: { id: string; input: Record<string, unknown> }): PromiseLike<IssueMutationPayload>;
   commentCreate(variables: { input: Record<string, unknown> }): PromiseLike<CommentMutationPayload>;
   workflowStates(variables: Record<string, unknown>): PromiseLike<WorkflowStateConnectionEntity>;
@@ -151,6 +151,7 @@ export class LinearService {
   private readonly client: LinearClientLike;
   private readonly cache: MetadataCache | undefined;
   private readonly maxListItems: number;
+  private readonly graphqlClient: any;
 
   constructor(options: LinearServiceOptions) {
     this.cache = options.cache === null ? undefined : options.cache ?? new MetadataCache();
@@ -158,13 +159,27 @@ export class LinearService {
 
     if (options.client) {
       this.client = options.client;
+      this.graphqlClient = undefined;
     } else {
       const baseClient = new LinearClient({
         apiKey: options.config.apiKey,
         apiUrl: options.config.apiHost,
       });
       this.client = baseClient as unknown as LinearClientLike;
+      this.graphqlClient = (baseClient as any).client;
     }
+  }
+
+  private getGraphqlClient() {
+    if (this.graphqlClient) {
+      return this.graphqlClient;
+    }
+    // For mock clients in tests that support request method
+    if (typeof (this.client as any).request === 'function') {
+      return this.client as any;
+    }
+    // Fallback - shouldn't happen in production
+    return this.client;
   }
 
   async getIssue(issueRef: string): Promise<IssueSummary> {
@@ -227,7 +242,8 @@ export class LinearService {
 
   async createIssue(input: IssueCreateInput): Promise<IssueSummary> {
     try {
-      const response = await this.client.issueCreate({
+      const client = this.getGraphqlClient();
+      const response = await client.request(LinearDocument.CreateIssueDocument, {
         input: {
           teamId: input.teamId,
           title: input.title,
@@ -237,11 +253,11 @@ export class LinearService {
         },
       });
 
-      if (!response.success || !response.issue) {
+      if (!response?.issueCreate?.success || !response?.issueCreate?.issue) {
         throw new LinearApiError("Linear API did not return created issue");
       }
 
-      return this.mapIssue(response.issue);
+      return this.mapIssue(response.issueCreate.issue);
     } catch (error) {
       throw this.toLinearApiError(error, "Failed to create issue");
     }
@@ -249,7 +265,8 @@ export class LinearService {
 
   async updateIssue(issueId: string, input: IssueUpdateInput): Promise<IssueSummary> {
     try {
-      const response = await this.client.issueUpdate({
+      const client = this.getGraphqlClient();
+      const response = await client.request(LinearDocument.UpdateIssueDocument, {
         id: issueId,
         input: {
           title: input.title,
@@ -260,11 +277,11 @@ export class LinearService {
         },
       });
 
-      if (!response.success || !response.issue) {
+      if (!response?.issueUpdate?.success || !response?.issueUpdate?.issue) {
         throw new LinearApiError(`Linear API did not return updated issue ${issueId}`);
       }
 
-      return this.mapIssue(response.issue);
+      return this.mapIssue(response.issueUpdate.issue);
     } catch (error) {
       throw this.toLinearApiError(error, `Failed to update issue ${issueId}`);
     }
@@ -276,18 +293,19 @@ export class LinearService {
 
   async createComment(input: CommentInput): Promise<string> {
     try {
-      const response = await this.client.commentCreate({
+      const client = this.getGraphqlClient();
+      const response = await client.request(LinearDocument.CreateCommentDocument, {
         input: {
           issueId: input.issueId,
           body: input.body,
         },
       });
 
-      if (!response.success || !response.comment) {
+      if (!response?.commentCreate?.success || !response?.commentCreate?.comment) {
         throw new LinearApiError("Failed to create comment");
       }
 
-      return response.comment.id;
+      return response.commentCreate.comment.id;
     } catch (error) {
       throw this.toLinearApiError(error, `Failed to comment on issue ${input.issueId}`);
     }
