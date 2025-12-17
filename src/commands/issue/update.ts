@@ -12,6 +12,11 @@ import {
 	resolveStateId,
 } from "./helpers";
 
+interface UpdateInput {
+	fields: Record<string, unknown>;
+	comment?: string;
+}
+
 export class IssueUpdateCommand extends IssueBaseCommand {
 	static paths = [["issue", "update"]];
 
@@ -80,25 +85,27 @@ Failure Modes:
 	});
 
 	async execute(): Promise<number> {
+		const self = this;
 		return this.withContext(async (context) => {
-			const command = this;
-			const program = Effect.gen(function* (_) {
-				const ctx = yield* _(CliContext);
-				const issueRef = command.resolveIssueRef(ctx);
-				const issue = yield* _(
-					Effect.promise(() => ctx.service.getIssue(issueRef)),
+			const program = Effect.gen(function* () {
+				const ctx = yield* CliContext;
+				const issueRef = self.resolveIssueRef(ctx);
+				const issue = yield* Effect.promise(() =>
+					ctx.service.getIssue(issueRef),
 				);
 
-				let updateInput = yield* _(
-					command.buildUpdateInputEffect(ctx, issue.id, issue.teamId),
+				let updateInput = yield* self.buildUpdateInputEffect(
+					ctx,
+					issue.id,
+					issue.teamId,
 				);
 
 				if (!updateInput) {
-					const interactive = yield* _(
-						Effect.sync(() => process.stdin.isTTY === true),
+					const interactive = yield* Effect.sync(
+						() => process.stdin.isTTY === true,
 					);
 					if (interactive) {
-						const comment = yield* _(command.promptForCommentEffect());
+						const comment = yield* self.promptForCommentEffect();
 						if (comment) {
 							updateInput = { fields: {}, comment };
 						}
@@ -112,25 +119,21 @@ Failure Modes:
 
 				const hasFieldUpdates = Object.keys(updateInput.fields).length > 0;
 				const updated = hasFieldUpdates
-					? yield* _(
-							Effect.promise(() =>
-								ctx.service.updateIssue(issue.id, updateInput!.fields),
-							),
+					? yield* Effect.promise(() =>
+							ctx.service.updateIssue(issue.id, updateInput!.fields),
 						)
 					: issue;
 
 				if (updateInput.comment) {
-					yield* _(
-						Effect.promise(() =>
-							ctx.service.createComment({
-								issueId: issue.id,
-								body: updateInput!.comment!,
-							}),
-						),
+					yield* Effect.promise(() =>
+						ctx.service.createComment({
+							issueId: issue.id,
+							body: updateInput!.comment!,
+						}),
 					);
 				}
 
-				if (command.json) {
+				if (self.json) {
 					ctx.output.write({ issue: updated });
 				} else {
 					ctx.output.success("Issue updated", {
@@ -169,9 +172,10 @@ Failure Modes:
 
 	private buildUpdateInputEffect(
 		context: CommandContext,
-		issueId: string,
+		_issueId: string,
 		teamId?: string | null,
-	) {
+	): Effect.Effect<UpdateInput | undefined, never, never> {
+		const self = this;
 		const fields: Record<string, unknown> = {};
 
 		const titleValue = normalizeOptionString(this.titleUpdate);
@@ -188,41 +192,35 @@ Failure Modes:
 			fields.labelIds = labelIds;
 		}
 
-		return Effect.gen(
-			function* (_) {
-				const targetTeam = teamId ?? context.config.defaults.teamId;
-				const statusValue = normalizeOptionString(this.status);
-				if (statusValue) {
-					const stateId = yield* _(
-						Effect.promise(() =>
-							resolveStateId(context, statusValue, targetTeam),
-						),
-					);
-					fields.stateId = stateId;
-				}
+		return Effect.gen(function* () {
+			const targetTeam = teamId ?? context.config.defaults.teamId;
+			const statusValue = normalizeOptionString(self.status);
+			if (statusValue) {
+				const stateId = yield* Effect.promise(() =>
+					resolveStateId(context, statusValue, targetTeam),
+				);
+				fields.stateId = stateId;
+			}
 
-				const assigneeValue = normalizeOptionString(this.assignee);
-				if (assigneeValue) {
-					const assigneeId = yield* _(
-						Effect.promise(() =>
-							resolveAssigneeId(context, assigneeValue, targetTeam),
-						),
-					);
-					fields.assigneeId = assigneeId;
-				}
+			const assigneeValue = normalizeOptionString(self.assignee);
+			if (assigneeValue) {
+				const assigneeId = yield* Effect.promise(() =>
+					resolveAssigneeId(context, assigneeValue, targetTeam),
+				);
+				fields.assigneeId = assigneeId;
+			}
 
-				const hasChanges = Object.keys(fields).length > 0;
-				const comment = this.comment;
+			const hasChanges = Object.keys(fields).length > 0;
+			const comment = self.comment;
 
-				if (!hasChanges && !comment) {
-					return undefined;
-				}
+			if (!hasChanges && !comment) {
+				return undefined;
+			}
 
-				return {
-					fields,
-					comment,
-				};
-			}.bind(this),
-		);
+			return {
+				fields,
+				comment,
+			};
+		});
 	}
 }

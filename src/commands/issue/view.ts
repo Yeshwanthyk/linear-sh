@@ -43,28 +43,27 @@ Side Effects:
 	});
 
 	async execute(): Promise<number> {
+		const self = this;
 		return this.withContext(async (context) => {
-			const program = Effect.gen(
-				function* (_) {
-					const ctx = yield* _(CliContext);
-					const issueRef = yield* _(this.resolveIssueRefEffect());
-					const details = yield* _(
-						Effect.promise(() => ctx.service.getIssueDetails(issueRef)),
-					);
+			const program = Effect.gen(function* () {
+				const ctx = yield* CliContext;
+				const issueRef = yield* self.resolveIssueRefEffect();
+				const details = yield* Effect.promise(() =>
+					ctx.service.getIssueDetails(issueRef),
+				);
 
-					if (this.open && details.url) {
-						yield* _(Effect.promise(() => openInBrowser(details.url!)));
-					}
+				if (self.open && details.url) {
+					yield* Effect.promise(() => openInBrowser(details.url!));
+				}
 
-					if (this.json) {
-						ctx.output.write({ issue: details });
-					} else {
-						ctx.output.write(formatIssueDetails(details));
-					}
+				if (self.json) {
+					ctx.output.write({ issue: details });
+				} else {
+					ctx.output.write(formatIssueDetails(details));
+				}
 
-					return 0;
-				}.bind(this),
-			);
+				return 0;
+			});
 
 			return runCommandEffect(context, program);
 		});

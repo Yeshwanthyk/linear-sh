@@ -26,29 +26,28 @@ Behavior:
 	});
 
 	async execute(): Promise<number> {
+		const self = this;
 		return this.withContext(async (context) => {
-			const program = Effect.gen(
-				function* (_) {
-					const ctx = yield* _(CliContext);
-					const issueRef = yield* _(this.resolveIssueRefEffect());
-					const issue = yield* _(
-						Effect.promise(() => ctx.service.getIssue(issueRef)),
-					);
+			const program = Effect.gen(function* () {
+				const ctx = yield* CliContext;
+				const issueRef = yield* self.resolveIssueRefEffect();
+				const issue = yield* Effect.promise(() =>
+					ctx.service.getIssue(issueRef),
+				);
 
-					if (!issue.url) {
-						ctx.output.error(new Error("Issue does not have a URL"));
-						return 1;
-					}
+				if (!issue.url) {
+					ctx.output.error(new Error("Issue does not have a URL"));
+					return 1;
+				}
 
-					if (this.json) {
-						ctx.output.write({ identifier: issue.identifier, url: issue.url });
-					} else {
-						ctx.output.write(issue.url);
-					}
+				if (self.json) {
+					ctx.output.write({ identifier: issue.identifier, url: issue.url });
+				} else {
+					ctx.output.write(issue.url);
+				}
 
-					return 0;
-				}.bind(this),
-			);
+				return 0;
+			});
 
 			return runCommandEffect(context, program);
 		});

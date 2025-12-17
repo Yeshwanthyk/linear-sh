@@ -7,11 +7,15 @@ export const CliContext = Context.GenericTag<CommandContext>(
 	"linear-sh/runtime/CliContext",
 );
 
-export function runCommandEffect(
+export function runCommandEffect<R extends typeof CliContext | CommandContext>(
 	context: CommandContext,
-	program: Effect.Effect<number, unknown, typeof CliContext>,
+	program: Effect.Effect<number, unknown, R>,
 ): Promise<number> {
-	const provided = Effect.provideService(program, CliContext, context);
+	const provided = Effect.provideService(
+		program,
+		CliContext,
+		context,
+	) as Effect.Effect<number, unknown, never>;
 	return Effect.runPromiseExit(provided).then((exit) =>
 		Exit.match(exit, {
 			onSuccess: (value) => value,

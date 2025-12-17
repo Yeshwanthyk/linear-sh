@@ -83,123 +83,105 @@ Failure Modes:
 	});
 
 	async execute(): Promise<number> {
+		const self = this;
 		return this.withContext(async (context) => {
-			const program = Effect.gen(
-				function* (_) {
-					const ctx = yield* _(CliContext);
-					const issueRef = this.resolveIssueRef(ctx);
-					const details = yield* _(
-						Effect.promise(() => ctx.service.getIssue(issueRef)),
+			const program = Effect.gen(function* () {
+				const ctx = yield* CliContext;
+				const issueRef = self.resolveIssueRef(ctx);
+				const details = yield* Effect.promise(() =>
+					ctx.service.getIssue(issueRef),
+				);
+
+				const branchName = yield* self.handleBranchEffect(details);
+				const updates = yield* self.prepareUpdatesEffect(details, ctx);
+
+				if (updates.stateId || updates.assigneeId) {
+					yield* Effect.promise(() =>
+						ctx.service.updateIssue(details.id, updates),
 					);
+				}
 
-					const branchName = yield* _(this.handleBranchEffect(details));
-					const updates = yield* _(this.prepareUpdatesEffect(details, ctx));
-
-					if (updates.stateId || updates.assigneeId) {
-						yield* _(
-							Effect.promise(() =>
-								ctx.service.updateIssue(details.id, updates),
-							),
-						);
+				if (self.json) {
+					const output: Record<string, unknown> = {
+						issue: { id: details.id, identifier: details.identifier },
+					};
+					if (branchName) {
+						output.branch = branchName;
 					}
-
-					if (this.json) {
-						const output: Record<string, unknown> = {
-							issue: { id: details.id, identifier: details.identifier },
-						};
-						if (branchName) {
-							output.branch = branchName;
-						}
-						ctx.output.write(output);
-					} else {
-						const message =
-							this.noBranch === true ? "Issue updated" : "Issue started";
-						const payload: Record<string, string> = {
-							identifier: details.identifier,
-						};
-						if (branchName) {
-							payload.branch = branchName;
-						}
-						ctx.output.success(message, payload);
+					ctx.output.write(output);
+				} else {
+					const message =
+						self.noBranch === true ? "Issue updated" : "Issue started";
+					const payload: Record<string, string> = {
+						identifier: details.identifier,
+					};
+					if (branchName) {
+						payload.branch = branchName;
 					}
+					ctx.output.success(message, payload);
+				}
 
-					return 0;
-				}.bind(this),
-			);
+				return 0;
+			});
 
 			return runCommandEffect(context, program);
 		});
 	}
 
 	private handleBranchEffect(details: IssueSummary) {
-		return Effect.gen(
-			function* (_) {
-				if (this.noBranch === true) {
-					return undefined;
+		const self = this;
+		return Effect.gen(function* () {
+			if (self.noBranch === true) {
+				return undefined;
+			}
+
+			const branchOverride = normalizeOptionString(self.branch);
+			const branchName =
+				branchOverride ??
+				deriveBranchName(details.identifier, details.branchName, details.title);
+
+			yield* Effect.sync(() => {
+				if (!IssueStartCommand.git.branchExists(branchName)) {
+					IssueStartCommand.git.createBranch(branchName);
+				} else {
+					IssueStartCommand.git.checkoutBranch(branchName);
 				}
+			});
 
-				const branchOverride = normalizeOptionString(this.branch);
-				const branchName =
-					branchOverride ??
-					deriveBranchName(
-						details.identifier,
-						details.branchName,
-						details.title,
-					);
-
-				yield* _(
-					Effect.sync(() => {
-						if (!IssueStartCommand.git.branchExists(branchName)) {
-							IssueStartCommand.git.createBranch(branchName);
-						} else {
-							IssueStartCommand.git.checkoutBranch(branchName);
-						}
-					}),
-				);
-
-				return branchName;
-			}.bind(this),
-		);
+			return branchName;
+		});
 	}
 
 	private prepareUpdatesEffect(details: IssueSummary, context: CommandContext) {
+		const self = this;
 		const updates: { stateId?: string; assigneeId?: string } = {};
-
 		const targetTeam = details.teamId ?? context.config.defaults.teamId;
 
-		const effect = Effect.gen(
-			function* (_) {
-				const desiredState = normalizeOptionString(this.state) ?? "In Progress";
-				const stateId = yield* _(
-					Effect.promise(() =>
-						resolveStateId(context, desiredState, targetTeam),
-					),
-				);
-				if (stateId) {
-					updates.stateId = stateId;
-				}
+		return Effect.gen(function* () {
+			const desiredState = normalizeOptionString(self.state) ?? "In Progress";
+			const stateId = yield* Effect.promise(() =>
+				resolveStateId(context, desiredState, targetTeam),
+			);
+			if (stateId) {
+				updates.stateId = stateId;
+			}
 
-				if (this.assign || this.assignee) {
-					const assigneeSource =
-						normalizeOptionString(this.assignee) ??
-						context.config.defaults.assigneeId;
-					if (assigneeSource) {
-						const assigneeId = yield* _(
-							Effect.promise(() =>
-								resolveAssigneeId(context, assigneeSource, targetTeam),
-							),
-						);
-						if (assigneeId) {
-							updates.assigneeId = assigneeId;
-						}
+			if (self.assign || self.assignee) {
+				const assigneeSource =
+					normalizeOptionString(self.assignee) ??
+					context.config.defaults.assigneeId;
+				if (assigneeSource) {
+					const assigneeId = yield* Effect.promise(() =>
+						resolveAssigneeId(context, assigneeSource, targetTeam),
+					);
+					if (assigneeId) {
+						updates.assigneeId = assigneeId;
 					}
 				}
+			}
 
-				return updates;
-			}.bind(this),
-		);
-
-		return effect;
+			return updates;
+		});
 	}
 }
 

@@ -32,31 +32,26 @@ export abstract class IssueBaseCommand extends BaseCommand {
 	}
 
 	protected resolveIssueRefEffect(fallbackToGit = true) {
-		return Effect.gen(
-			function* (_) {
-				const ctx = yield* _(CliContext);
+		const self = this;
+		return Effect.gen(function* () {
+			const ctx = yield* CliContext;
 
-				if (this.issueRef) {
-					return this.issueRef;
-				}
-				if (!fallbackToGit) {
-					return yield* _(
-						Effect.fail(new Error("Issue reference is required")),
-					);
-				}
-				const inferred = inferIssueKeyFromRepository();
-				if (!inferred) {
-					return yield* _(
-						Effect.fail(
-							new Error(
-								"Issue reference not provided and could not infer from Git branch",
-							),
-						),
-					);
-				}
-				ctx.logger.debug("Inferred issue from branch", { inferred });
-				return inferred;
-			}.bind(this),
-		);
+			if (self.issueRef) {
+				return self.issueRef;
+			}
+			if (!fallbackToGit) {
+				return yield* Effect.fail(new Error("Issue reference is required"));
+			}
+			const inferred = inferIssueKeyFromRepository();
+			if (!inferred) {
+				return yield* Effect.fail(
+					new Error(
+						"Issue reference not provided and could not infer from Git branch",
+					),
+				);
+			}
+			ctx.logger.debug("Inferred issue from branch", { inferred });
+			return inferred;
+		});
 	}
 }
