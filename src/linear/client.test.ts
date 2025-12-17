@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { LinearApiError } from "../errors";
+import { LinearApiErrorClass as LinearApiError } from "../errors";
 import { MetadataCache } from "./cache";
 import type { IssueLabelSummary, LinearServiceOptions } from "./client";
 import {
@@ -137,14 +137,16 @@ class MockLinearClient {
 			(document as { definitions?: Array<{ name?: { value?: string } }> })
 				?.definitions?.[0]?.name?.value ?? "";
 
+		const input = variables.input as Record<string, unknown> | undefined;
+
 		if (docName === "createIssue") {
 			const next = this.issueCreateQueue.shift() ?? { success: false };
 			if (next.success && !next.issue) {
 				next.issue = createMockIssue({
 					id: "created-1",
 					identifier: "ENG-100",
-					title: variables.input?.title as string,
-					teamId: variables.input?.teamId as string,
+					title: input?.title as string,
+					teamId: input?.teamId as string,
 				});
 			}
 			return Promise.resolve({ issueCreate: next });
@@ -165,7 +167,7 @@ class MockLinearClient {
 		if (docName === "createComment") {
 			const next = this.commentCreateQueue.shift() ?? {
 				success: true,
-				comment: { id: `comment-${variables.input?.issueId as string}` },
+				comment: { id: `comment-${input?.issueId as string}` },
 			};
 			return Promise.resolve({ commentCreate: next });
 		}

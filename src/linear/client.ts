@@ -1,8 +1,31 @@
 import { LinearClient, LinearDocument } from "@linear/sdk";
 
 import type { LinearConfig } from "../config";
-import { LinearApiError } from "../errors";
+import { LinearApiErrorClass as LinearApiError } from "../errors";
 import { MetadataCache } from "./cache";
+import type {
+	CommentInput,
+	IssueCreateInput,
+	IssueDetails,
+	IssueLabelSummary,
+	IssueListOptions,
+	IssueSummary,
+	IssueUpdateInput,
+	UserSummary,
+	WorkflowStateSummary,
+} from "./types";
+
+export type {
+	CommentInput,
+	IssueCreateInput,
+	IssueDetails,
+	IssueLabelSummary,
+	IssueListOptions,
+	IssueSummary,
+	IssueUpdateInput,
+	UserSummary,
+	WorkflowStateSummary,
+} from "./types";
 
 const ISSUE_IDENTIFIER_REGEX = /^[A-Za-z]+-\d+$/i;
 const DEFAULT_MAX_LIST_ITEMS = 50;
@@ -12,78 +35,6 @@ export interface LinearServiceOptions {
 	readonly cache?: MetadataCache | null;
 	readonly client?: LinearClientLike;
 	readonly maxListItems?: number;
-}
-
-export interface IssueSummary {
-	readonly id: string;
-	readonly identifier: string;
-	readonly title: string;
-	readonly url: string;
-	readonly description?: string | null;
-	readonly branchName?: string | null;
-	readonly stateId?: string | null;
-	readonly assigneeId?: string | null;
-	readonly teamId?: string | null;
-	readonly projectId?: string | null;
-	readonly labelIds: string[];
-	readonly priorityLabel?: string | null;
-	readonly updatedAt?: string | null;
-	readonly createdAt?: string | null;
-}
-
-export interface IssueDetails extends IssueSummary {
-	readonly stateName?: string | null;
-	readonly assigneeName?: string | null;
-	readonly teamName?: string | null;
-	readonly labels: IssueLabelSummary[];
-}
-
-export interface IssueLabelSummary {
-	readonly id: string;
-	readonly name: string;
-	readonly color?: string | null;
-}
-
-export interface IssueListOptions {
-	readonly teamId?: string;
-	readonly stateId?: string;
-	readonly limit?: number;
-	readonly assigneeId?: string;
-	readonly projectId?: string;
-}
-
-export interface IssueUpdateInput {
-	readonly title?: string;
-	readonly description?: string | null;
-	readonly assigneeId?: string | null;
-	readonly stateId?: string;
-	readonly labelIds?: string[];
-}
-
-export interface IssueCreateInput {
-	readonly teamId: string;
-	readonly title: string;
-	readonly description?: string | null;
-	readonly assigneeId?: string;
-	readonly labelIds?: string[];
-	readonly projectId?: string;
-}
-
-export interface CommentInput {
-	readonly issueId: string;
-	readonly body: string;
-}
-
-export interface WorkflowStateSummary {
-	readonly id: string;
-	readonly name: string;
-	readonly teamId?: string | null;
-}
-
-export interface UserSummary {
-	readonly id: string;
-	readonly name: string;
-	readonly email?: string | null;
 }
 
 interface LinearClientLike {
@@ -175,6 +126,28 @@ interface GraphqlRequester {
 		document: unknown,
 		variables: Record<string, unknown>,
 	): PromiseLike<unknown>;
+}
+
+// GraphQL mutation response types
+interface IssueCreateResponse {
+	issueCreate?: {
+		success: boolean;
+		issue?: LinearIssueEntity | null;
+	};
+}
+
+interface IssueUpdateResponse {
+	issueUpdate?: {
+		success: boolean;
+		issue?: LinearIssueEntity | null;
+	};
+}
+
+interface CommentCreateResponse {
+	commentCreate?: {
+		success: boolean;
+		comment?: { id: string } | null;
+	};
 }
 
 function isGraphqlRequester(value: unknown): value is GraphqlRequester {
@@ -293,7 +266,7 @@ export class LinearService {
 	async createIssue(input: IssueCreateInput): Promise<IssueSummary> {
 		try {
 			const client = this.getGraphqlClient();
-			const response = await client.request(
+			const response = (await client.request(
 				LinearDocument.CreateIssueDocument,
 				{
 					input: {
@@ -305,7 +278,7 @@ export class LinearService {
 						projectId: input.projectId,
 					},
 				},
-			);
+			)) as IssueCreateResponse;
 
 			if (!response?.issueCreate?.success || !response?.issueCreate?.issue) {
 				throw new LinearApiError("Linear API did not return created issue");
@@ -323,7 +296,7 @@ export class LinearService {
 	): Promise<IssueSummary> {
 		try {
 			const client = this.getGraphqlClient();
-			const response = await client.request(
+			const response = (await client.request(
 				LinearDocument.UpdateIssueDocument,
 				{
 					id: issueId,
@@ -335,7 +308,7 @@ export class LinearService {
 						labelIds: input.labelIds,
 					},
 				},
-			);
+			)) as IssueUpdateResponse;
 
 			if (!response?.issueUpdate?.success || !response?.issueUpdate?.issue) {
 				throw new LinearApiError(
@@ -359,7 +332,7 @@ export class LinearService {
 	async createComment(input: CommentInput): Promise<string> {
 		try {
 			const client = this.getGraphqlClient();
-			const response = await client.request(
+			const response = (await client.request(
 				LinearDocument.CreateCommentDocument,
 				{
 					input: {
@@ -367,7 +340,7 @@ export class LinearService {
 						body: input.body,
 					},
 				},
-			);
+			)) as CommentCreateResponse;
 
 			if (
 				!response?.commentCreate?.success ||
