@@ -12,6 +12,6 @@
 		"outDir": "./dist",
 		"types": ["bun-types"]
 	},
-	"include": ["src/**/*.ts", "scripts/**/*.ts"],
+	"include": ["src/**/*.ts"],
 	"exclude": ["bin", "dist", "node_modules"]
 }

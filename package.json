@@ -8,10 +8,11 @@
 	},
 	"scripts": {
 		"build": "bun build ./src/index.ts --outfile ./bin/linear.mjs --target bun --minify",
-		"lint": "bunx biome check .",
+		"lint": "oxlint src/",
 		"format": "bunx biome format --write .",
 		"test": "bun test",
-		"typecheck": "bunx tsc --noEmit"
+		"typecheck": "bunx tsc --noEmit",
+		"check": "bun run typecheck && bun run lint && bun run test"
 	},
 	"dependencies": {
 		"@linear/sdk": "^60.0.0",
@@ -23,10 +24,11 @@
 		"zx": "^8.1.2"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^1.8.3",
 		"@types/node": "^20.11.19",
 		"bun-types": "^1.1.25",
-		"typescript": "^5.6.2",
-		"@biomejs/biome": "^1.8.3"
+		"oxlint": "^1.33.0",
+		"typescript": "^5.6.2"
 	},
 	"engines": {
 		"bun": ">=1.1.0"
