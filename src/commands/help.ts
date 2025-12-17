@@ -15,13 +15,16 @@ function normaliseCategory(category?: string | null): string {
 	return trimmed && trimmed.length > 0 ? trimmed : "General";
 }
 
+// Helper to work around clipanion's overloaded definitions() signature
+type DefinitionsFn = (opts?: { colored?: boolean }) => CommandDefinition[];
+
 export class CompactHelpCommand extends Command {
 	static paths = [["-h"], ["--help"], ["help"]];
 
 	async execute(): Promise<number> {
-		const definitions = this.cli.definitions({
+		const definitions = (this.cli.definitions as DefinitionsFn)({
 			colored: false,
-		}) as CommandDefinition[];
+		});
 		const grouped = new Map<string, CommandDefinition[]>();
 
 		for (const def of definitions) {
@@ -87,9 +90,9 @@ export class DetailedHelpCommand extends Command {
 	static paths = [["--help-verbose"]];
 
 	async execute(): Promise<number> {
-		const definitions = this.cli.definitions({
+		const definitions = (this.cli.definitions as DefinitionsFn)({
 			colored: false,
-		}) as CommandDefinition[];
+		});
 		const grouped = new Map<string, CommandDefinition[]>();
 
 		for (const def of definitions) {
