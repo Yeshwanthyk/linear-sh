@@ -29,7 +29,7 @@ Behavior:
 
 Outputs:
   
-  - Plain mode logs \"Linear CLI ready\" with API host + defaults.
+  - Plain mode logs "Linear CLI ready" with API host + defaults.
   - --json still works globally and affects any subcommand.
 `,
 	});

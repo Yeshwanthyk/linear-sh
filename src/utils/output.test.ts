@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
 
-import { LinearApiError } from "../errors";
+import { LinearApiErrorClass as LinearApiError } from "../errors";
 import { createOutput } from "./output";
 
 class MemoryWritable extends Writable {

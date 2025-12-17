@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { LinearApiError } from "../../errors";
+import { LinearApiErrorClass as LinearApiError } from "../../errors";
 import type { IssueDetails, IssueSummary } from "../../linear/client";
 import { BaseCommand } from "../base-command";
 import type { CommandContext } from "../base-command";

@@ -3,8 +3,8 @@ import { existsSync, mkdirSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { ConfigError } from "./errors";
-export { ConfigError } from "./errors";
+import { ConfigErrorClass as ConfigError } from "./errors";
+export { ConfigErrorClass as ConfigError } from "./errors";
 
 export interface ConfigPaths {
 	readonly repoFile?: string;

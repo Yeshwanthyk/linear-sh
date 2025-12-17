@@ -2,7 +2,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { CacheError } from "../errors";
+import { CacheErrorClass as CacheError } from "../errors";
 
 export interface MetadataCacheOptions {
 	readonly homeDir?: string;

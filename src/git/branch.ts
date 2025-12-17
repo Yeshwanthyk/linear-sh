@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 
 import { GitIntegrationError } from "../errors";
+// Note: Uses legacy class for backward compat; will migrate to GitError tagged type
 
 const ISSUE_KEY_REGEX = /([A-Za-z]+-\d+)/i;
 const BRANCH_SANITIZE_REGEX = /[^a-z0-9/_-]+/g;
