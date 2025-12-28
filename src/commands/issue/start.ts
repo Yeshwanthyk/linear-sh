@@ -1,12 +1,24 @@
 import { Command, Option } from "clipanion";
 import { Effect } from "effect";
 
-import { branchExists, checkoutBranch, createBranch, sanitizeBranchName } from "../../git/branch";
-import type { IssueSummary } from "../../linear/client";
-import { CliContext, runCommandEffect } from "../../runtime/effect";
-import type { CommandContext } from "../base-command";
+import { sanitizeBranchName } from "../../git/branch";
+import {
+	branchExists,
+	checkoutBranch,
+	createBranch,
+	getDefaults,
+	getIssue,
+	success,
+	updateIssue,
+	write,
+	type IssueSummary,
+} from "../../services";
 import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
-import { normalizeOptionString, resolveAssigneeId, resolveStateId } from "./helpers";
+import {
+	normalizeOptionString,
+	resolveAssigneeIdEffect,
+	resolveStateIdEffect,
+} from "./helpers";
 
 export class IssueStartCommand extends IssueBaseCommand {
 	static paths = [["issue", "start"]];
@@ -43,12 +55,6 @@ Failure Modes:
 `,
 	});
 
-	static git = {
-		branchExists,
-		createBranch,
-		checkoutBranch,
-	};
-
 	state = Option.String("--state", {
 		description: "Workflow state to transition into",
 		required: false,
@@ -74,17 +80,17 @@ Failure Modes:
 
 	async execute(): Promise<number> {
 		const self = this;
-		return this.withContext(async (context) => {
-			const program = Effect.gen(function* () {
-				const ctx = yield* CliContext;
-				const issueRef = self.resolveIssueRef(ctx);
-				const details = yield* Effect.promise(() => ctx.service.getIssue(issueRef));
+
+		return this.run(
+			Effect.gen(function* () {
+				const issueRef = yield* self.resolveIssueRefEffect();
+				const details = yield* getIssue(issueRef);
 
 				const branchName = yield* self.handleBranchEffect(details);
-				const updates = yield* self.prepareUpdatesEffect(details, ctx);
+				const updates = yield* self.prepareUpdatesEffect(details);
 
 				if (updates.stateId || updates.assigneeId) {
-					yield* Effect.promise(() => ctx.service.updateIssue(details.id, updates));
+					yield* updateIssue(details.id, updates);
 				}
 
 				if (self.json) {
@@ -94,7 +100,7 @@ Failure Modes:
 					if (branchName) {
 						output.branch = branchName;
 					}
-					ctx.output.write(output);
+					yield* write(output);
 				} else {
 					const message = self.noBranch === true ? "Issue updated" : "Issue started";
 					const payload: Record<string, string> = {
@@ -103,14 +109,12 @@ Failure Modes:
 					if (branchName) {
 						payload.branch = branchName;
 					}
-					ctx.output.success(message, payload);
+					yield* success(message, payload);
 				}
 
 				return 0;
-			});
-
-			return runCommandEffect(context, program);
-		});
+			}),
+		);
 	}
 
 	private handleBranchEffect(details: IssueSummary) {
@@ -124,39 +128,35 @@ Failure Modes:
 			const branchName =
 				branchOverride ?? deriveBranchName(details.identifier, details.branchName, details.title);
 
-			yield* Effect.sync(() => {
-				if (!IssueStartCommand.git.branchExists(branchName)) {
-					IssueStartCommand.git.createBranch(branchName);
-				} else {
-					IssueStartCommand.git.checkoutBranch(branchName);
-				}
-			});
+			const exists = yield* branchExists(branchName);
+			if (!exists) {
+				yield* createBranch(branchName);
+			} else {
+				yield* checkoutBranch(branchName);
+			}
 
 			return branchName;
 		});
 	}
 
-	private prepareUpdatesEffect(details: IssueSummary, context: CommandContext) {
+	private prepareUpdatesEffect(details: IssueSummary) {
 		const self = this;
 		const updates: { stateId?: string; assigneeId?: string } = {};
-		const targetTeam = details.teamId ?? context.config.defaults.teamId;
 
 		return Effect.gen(function* () {
+			const defaults = yield* getDefaults();
+			const targetTeam = details.teamId ?? defaults.teamId;
+
 			const desiredState = normalizeOptionString(self.state) ?? "In Progress";
-			const stateId = yield* Effect.promise(() =>
-				resolveStateId(context, desiredState, targetTeam),
-			);
+			const stateId = yield* resolveStateIdEffect(desiredState, targetTeam);
 			if (stateId) {
 				updates.stateId = stateId;
 			}
 
 			if (self.assign || self.assignee) {
-				const assigneeSource =
-					normalizeOptionString(self.assignee) ?? context.config.defaults.assigneeId;
+				const assigneeSource = normalizeOptionString(self.assignee) ?? defaults.assigneeId;
 				if (assigneeSource) {
-					const assigneeId = yield* Effect.promise(() =>
-						resolveAssigneeId(context, assigneeSource, targetTeam),
-					);
+					const assigneeId = yield* resolveAssigneeIdEffect(assigneeSource, targetTeam);
 					if (assigneeId) {
 						updates.assigneeId = assigneeId;
 					}

@@ -5,6 +5,8 @@ import {
 	ConfigService,
 	GitService,
 	GitServiceLive,
+	LinearClientService,
+	LinearClientLive,
 	LoggerService,
 	LoggerServiceLive,
 	makeConfigServiceLive,
@@ -24,7 +26,13 @@ export interface AppLayerOptions {
 	readonly requireApiKey?: boolean;
 }
 
-export type AppServices = ConfigService | CacheService | GitService | LoggerService | OutputService;
+export type AppServices =
+	| ConfigService
+	| CacheService
+	| GitService
+	| LinearClientService
+	| LoggerService
+	| OutputService;
 
 export function makeAppLayer(options: AppLayerOptions = {}) {
 	const configLayer = makeConfigServiceLive({
@@ -49,8 +57,18 @@ export function makeAppLayer(options: AppLayerOptions = {}) {
 	};
 	const outputLayer = makeOutputServiceLive(outputOptions);
 
+	// LinearClientLive depends on ConfigService
+	const linearClientLayer = LinearClientLive.pipe(Layer.provide(configLayer));
+
 	// Merge all layers
-	return Layer.mergeAll(configLayer, cacheLayer, GitServiceLive, LoggerServiceLive, outputLayer);
+	return Layer.mergeAll(
+		configLayer,
+		cacheLayer,
+		GitServiceLive,
+		linearClientLayer,
+		LoggerServiceLive,
+		outputLayer,
+	);
 }
 
 // -----------------------------------------------------------------------------

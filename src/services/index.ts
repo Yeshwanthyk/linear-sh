@@ -58,5 +58,31 @@ export {
 	logError,
 } from "./logger";
 
+// Linear Client Service
+export {
+	LinearClientService,
+	LinearClientLive,
+	getIssue,
+	getIssueDetails,
+	listIssues,
+	createIssue,
+	updateIssue,
+	transitionIssue,
+	createComment,
+	getWorkflowStates,
+	getUsers,
+	getTeams,
+	type IssueSummary,
+	type IssueDetails,
+	type IssueCreateInput,
+	type IssueUpdateInput,
+	type IssueListOptions,
+	type IssueLabelSummary,
+	type CommentInput,
+	type WorkflowStateSummary,
+	type UserSummary,
+	type TeamSummary,
+} from "./linear-client";
+
 // Re-export types
 export type { OutputFormat, Profile, ProfileDefaults, ResolvedConfig } from "../config/index";

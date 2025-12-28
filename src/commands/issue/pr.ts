@@ -2,7 +2,8 @@ import { spawnSync } from "node:child_process";
 import { Command, Option } from "clipanion";
 import { Effect } from "effect";
 
-import { CliContext, runCommandEffect } from "../../runtime/effect";
+import { ValidationError } from "../../errors";
+import { getIssueDetails, success } from "../../services";
 import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
 
 export class IssuePrCommand extends IssueBaseCommand {
@@ -40,7 +41,8 @@ Failure Modes:
 `,
 	});
 
-	static runGh = (args: string[]) => spawnSync("gh", args, { stdio: "inherit" });
+	static runGh = (args: string[]): { status: number | null } =>
+		spawnSync("gh", args, { stdio: "inherit" });
 
 	draft = Option.Boolean("--draft", false, {
 		description: "Open PR as draft",
@@ -48,14 +50,16 @@ Failure Modes:
 
 	async execute(): Promise<number> {
 		const self = this;
-		return this.withContext(async (context) => {
-			const program = Effect.gen(function* () {
-				const ctx = yield* CliContext;
+
+		return this.run(
+			Effect.gen(function* () {
 				const issueRef = yield* self.resolveIssueRefEffect();
-				const issue = yield* Effect.promise(() => ctx.service.getIssueDetails(issueRef));
+				const issue = yield* getIssueDetails(issueRef);
 
 				if (!issue.url) {
-					return yield* Effect.fail(new Error("Issue does not have a URL to include in PR body"));
+					return yield* Effect.fail(
+						ValidationError("Issue does not have a URL to include in PR body", "url"),
+					);
 				}
 
 				const title = `[${issue.identifier}] ${issue.title}`;
@@ -68,17 +72,15 @@ Failure Modes:
 
 				const result = yield* Effect.sync(() => IssuePrCommand.runGh(args));
 				if (result.status !== 0) {
-					return yield* Effect.fail(new Error("gh pr create failed"));
+					return yield* Effect.fail(ValidationError("gh pr create failed", "ghCli"));
 				}
 
-				ctx.output.success("Pull request created", {
+				yield* success("Pull request created", {
 					issue: issue.identifier,
 				});
 
 				return 0;
-			});
-
-			return runCommandEffect(context, program);
-		});
+			}),
+		);
 	}
 }

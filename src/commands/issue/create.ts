@@ -2,10 +2,15 @@ import { Command, Option } from "clipanion";
 import { Effect } from "effect";
 import enquirer from "enquirer";
 
-import { CliContext, runCommandEffect } from "../../runtime/effect";
+import { ValidationError } from "../../errors";
+import { createIssue, getDefaults, success, write } from "../../services";
 import { BaseCommand } from "../base-command";
 import { ISSUE_USAGE_CATEGORY } from "./base";
-import { normalizeOptionString, normalizeOptionStringArray, resolveAssigneeId } from "./helpers";
+import {
+	normalizeOptionString,
+	normalizeOptionStringArray,
+	resolveAssigneeIdEffect,
+} from "./helpers";
 
 export class IssueCreateCommand extends BaseCommand {
 	static paths = [["issue", "create"]];
@@ -74,32 +79,30 @@ Failure Modes:
 
 	async execute(): Promise<number> {
 		const self = this;
-		return this.withContext(async (context) => {
-			const program = Effect.gen(function* () {
+
+		return this.run(
+			Effect.gen(function* () {
 				const issueInput = yield* self.collectInputEffect();
-				const ctx = yield* CliContext;
-				const issue = yield* Effect.promise(() => ctx.service.createIssue(issueInput));
+				const issue = yield* createIssue(issueInput);
 
 				if (self.json) {
-					ctx.output.write({ issue });
+					yield* write({ issue });
 				} else {
-					ctx.output.success("Issue created", {
+					yield* success("Issue created", {
 						identifier: issue.identifier,
 						url: issue.url,
 					});
 				}
 
 				return 0;
-			});
-
-			return runCommandEffect(context, program);
-		});
+			}),
+		);
 	}
 
 	private collectInputEffect() {
 		const self = this;
 		return Effect.gen(function* () {
-			const context = yield* CliContext;
+			const defaults = yield* getDefaults();
 
 			let title = self.title;
 			let description = self.description;
@@ -131,24 +134,23 @@ Failure Modes:
 			}
 
 			if (!title) {
-				return yield* Effect.fail(new Error("Issue title is required"));
+				return yield* Effect.fail(ValidationError("Issue title is required", "title"));
 			}
 
-			const teamId = normalizeOptionString(self.team) ?? context.config.defaults.teamId;
+			const teamId = normalizeOptionString(self.team) ?? defaults.teamId;
 			if (!teamId) {
-				return yield* Effect.fail(new Error("Team ID is required (set via --team or config)"));
+				return yield* Effect.fail(
+					ValidationError("Team ID is required (set via --team or config)", "teamId"),
+				);
 			}
 
-			const assigneeId = yield* Effect.promise(() =>
-				resolveAssigneeId(
-					context,
-					normalizeOptionString(self.assignee) ?? context.config.defaults.assigneeId,
-					teamId,
-				),
+			const assigneeId = yield* resolveAssigneeIdEffect(
+				normalizeOptionString(self.assignee) ?? defaults.assigneeId,
+				teamId,
 			);
 
 			const labelIds = normalizeOptionStringArray(self.labels) ?? undefined;
-			const projectId = context.config.defaults.projectId ?? undefined;
+			const projectId = defaults.projectId ?? undefined;
 
 			return {
 				teamId,

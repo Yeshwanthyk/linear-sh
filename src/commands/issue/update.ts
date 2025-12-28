@@ -2,18 +2,26 @@ import { Command, Option } from "clipanion";
 import { Effect } from "effect";
 import enquirer from "enquirer";
 
-import { CliContext, runCommandEffect } from "../../runtime/effect";
-import type { CommandContext } from "../base-command";
+import {
+	createComment,
+	getDefaults,
+	getIssue,
+	success,
+	updateIssue,
+	warn,
+	write,
+	type IssueUpdateInput,
+} from "../../services";
 import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
 import {
 	normalizeOptionString,
 	normalizeOptionStringArray,
-	resolveAssigneeId,
-	resolveStateId,
+	resolveAssigneeIdEffect,
+	resolveStateIdEffect,
 } from "./helpers";
 
 interface UpdateInput {
-	fields: Record<string, unknown>;
+	fields: IssueUpdateInput;
 	comment?: string;
 }
 
@@ -86,57 +94,53 @@ Failure Modes:
 
 	async execute(): Promise<number> {
 		const self = this;
-		return this.withContext(async (context) => {
-			const program = Effect.gen(function* () {
-				const ctx = yield* CliContext;
-				const issueRef = self.resolveIssueRef(ctx);
-				const issue = yield* Effect.promise(() => ctx.service.getIssue(issueRef));
 
-				let updateInput = yield* self.buildUpdateInputEffect(ctx, issue.id, issue.teamId);
+		return this.run(
+			Effect.gen(function* () {
+				const issueRef = yield* self.resolveIssueRefEffect();
+				const issue = yield* getIssue(issueRef);
+
+				let updateInput = yield* self.buildUpdateInputEffect(issue.teamId);
 
 				if (!updateInput) {
 					const interactive = yield* Effect.sync(() => process.stdin.isTTY === true);
 					if (interactive) {
-						const comment = yield* self.promptForCommentEffect();
-						if (comment) {
-							updateInput = { fields: {}, comment };
+						const promptedComment = yield* self.promptForCommentEffect();
+						if (promptedComment) {
+							updateInput = { fields: {}, comment: promptedComment };
 						}
 					}
 				}
 
 				if (!updateInput) {
-					ctx.output.warn("No update options provided");
+					yield* warn("No update options provided");
 					return 0;
 				}
 
 				const hasFieldUpdates = Object.keys(updateInput.fields).length > 0;
 				const updated = hasFieldUpdates
-					? yield* Effect.promise(() => ctx.service.updateIssue(issue.id, updateInput!.fields))
+					? yield* updateIssue(issue.id, updateInput.fields)
 					: issue;
 
 				if (updateInput.comment) {
-					yield* Effect.promise(() =>
-						ctx.service.createComment({
-							issueId: issue.id,
-							body: updateInput!.comment!,
-						}),
-					);
+					yield* createComment({
+						issueId: issue.id,
+						body: updateInput.comment,
+					});
 				}
 
 				if (self.json) {
-					ctx.output.write({ issue: updated });
+					yield* write({ issue: updated });
 				} else {
-					ctx.output.success("Issue updated", {
+					yield* success("Issue updated", {
 						identifier: updated.identifier,
 						stateId: updated.stateId,
 					});
 				}
 
 				return 0;
-			});
-
-			return runCommandEffect(context, program);
-		});
+			}),
+		);
 	}
 
 	private promptForCommentEffect() {
@@ -160,44 +164,38 @@ Failure Modes:
 		});
 	}
 
-	private buildUpdateInputEffect(
-		context: CommandContext,
-		_issueId: string,
-		teamId?: string | null,
-	): Effect.Effect<UpdateInput | undefined, never, never> {
+	private buildUpdateInputEffect(teamId?: string | null) {
 		const self = this;
-		const fields: Record<string, unknown> = {};
+		const fields: IssueUpdateInput = {};
 
 		const titleValue = normalizeOptionString(this.titleUpdate);
 		if (titleValue) {
-			fields.title = this.titleUpdate;
+			(fields as { title?: string }).title = this.titleUpdate;
 		}
 
 		if (this.descriptionUpdate !== undefined) {
-			fields.description = this.descriptionUpdate;
+			(fields as { description?: string }).description = this.descriptionUpdate;
 		}
 
 		const labelIds = normalizeOptionStringArray(this.labels);
 		if (labelIds) {
-			fields.labelIds = labelIds;
+			(fields as { labelIds?: string[] }).labelIds = labelIds;
 		}
 
 		return Effect.gen(function* () {
-			const targetTeam = teamId ?? context.config.defaults.teamId;
+			const defaults = yield* getDefaults();
+			const targetTeam = teamId ?? defaults.teamId;
+
 			const statusValue = normalizeOptionString(self.status);
 			if (statusValue) {
-				const stateId = yield* Effect.promise(() =>
-					resolveStateId(context, statusValue, targetTeam),
-				);
-				fields.stateId = stateId;
+				const stateId = yield* resolveStateIdEffect(statusValue, targetTeam);
+				(fields as { stateId?: string }).stateId = stateId;
 			}
 
 			const assigneeValue = normalizeOptionString(self.assignee);
 			if (assigneeValue) {
-				const assigneeId = yield* Effect.promise(() =>
-					resolveAssigneeId(context, assigneeValue, targetTeam),
-				);
-				fields.assigneeId = assigneeId;
+				const assigneeId = yield* resolveAssigneeIdEffect(assigneeValue, targetTeam);
+				(fields as { assigneeId?: string }).assigneeId = assigneeId;
 			}
 
 			const hasChanges = Object.keys(fields).length > 0;

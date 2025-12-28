@@ -1,8 +1,7 @@
 import { Command, Option } from "clipanion";
 import { Effect } from "effect";
 
-import type { IssueDetails } from "../../linear/client";
-import { CliContext, runCommandEffect } from "../../runtime/effect";
+import { getIssueDetails, write, type IssueDetails } from "../../services";
 import { openInBrowser } from "../../utils/open";
 import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
 
@@ -44,27 +43,25 @@ Side Effects:
 
 	async execute(): Promise<number> {
 		const self = this;
-		return this.withContext(async (context) => {
-			const program = Effect.gen(function* () {
-				const ctx = yield* CliContext;
+
+		return this.run(
+			Effect.gen(function* () {
 				const issueRef = yield* self.resolveIssueRefEffect();
-				const details = yield* Effect.promise(() => ctx.service.getIssueDetails(issueRef));
+				const details = yield* getIssueDetails(issueRef);
 
 				if (self.open && details.url) {
 					yield* Effect.promise(() => openInBrowser(details.url!));
 				}
 
 				if (self.json) {
-					ctx.output.write({ issue: details });
+					yield* write({ issue: details });
 				} else {
-					ctx.output.write(formatIssueDetails(details));
+					yield* write(formatIssueDetails(details));
 				}
 
 				return 0;
-			});
-
-			return runCommandEffect(context, program);
-		});
+			}),
+		);
 	}
 }
 

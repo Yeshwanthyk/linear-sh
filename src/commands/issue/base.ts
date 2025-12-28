@@ -1,8 +1,8 @@
 import { Option } from "clipanion";
 import { Effect } from "effect";
 
-import { inferIssueKeyFromRepository } from "../../git/branch";
-import { CliContext } from "../../runtime/effect";
+import { ValidationError, type LinearError } from "../../errors";
+import { inferIssueKey, logDebug } from "../../services";
 import type { CommandContext } from "../base-command";
 import { BaseCommand } from "../base-command";
 
@@ -11,6 +11,9 @@ export const ISSUE_USAGE_CATEGORY = "Issue workflows";
 export abstract class IssueBaseCommand extends BaseCommand {
 	issueRef = Option.String({ required: false });
 
+	/**
+	 * @deprecated Use resolveIssueRefEffect instead
+	 */
 	protected resolveIssueRef(context: CommandContext, fallbackToGit = true): string {
 		if (this.issueRef) {
 			return this.issueRef;
@@ -18,32 +21,50 @@ export abstract class IssueBaseCommand extends BaseCommand {
 		if (!fallbackToGit) {
 			throw new Error("Issue reference is required");
 		}
-		const inferred = inferIssueKeyFromRepository();
-		if (!inferred) {
-			throw new Error("Issue reference not provided and could not infer from Git branch");
+		// Legacy path - use sync git inference
+		const { execSync } = require("node:child_process");
+		try {
+			const branch = execSync("git rev-parse --abbrev-ref HEAD", { encoding: "utf8" }).trim();
+			const match = branch.match(/([A-Z]+-\d+)/i);
+			if (match?.[0]) {
+				context.logger.debug("Inferred issue from branch", { inferred: match[0] });
+				return match[0];
+			}
+		} catch {
+			// Not in a git repo
 		}
-		context.logger.debug("Inferred issue from branch", { inferred });
-		return inferred;
+		throw new Error("Issue reference not provided and could not infer from Git branch");
 	}
 
-	protected resolveIssueRefEffect(fallbackToGit = true) {
-		const self = this;
-		return Effect.gen(function* () {
-			const ctx = yield* CliContext;
+	/**
+	 * Resolve issue reference from argument or git branch.
+	 * Returns an Effect that yields the issue key.
+	 */
+	protected resolveIssueRefEffect(
+		fallbackToGit = true,
+	): Effect.Effect<string, LinearError, import("../../services").GitService | import("../../services").LoggerService> {
+		const ref = this.issueRef;
 
-			if (self.issueRef) {
-				return self.issueRef;
+		return Effect.gen(function* () {
+			if (ref) {
+				return ref;
 			}
 			if (!fallbackToGit) {
-				return yield* Effect.fail(new Error("Issue reference is required"));
+				return yield* Effect.fail(ValidationError("Issue reference is required", "issueRef"));
 			}
-			const inferred = inferIssueKeyFromRepository();
+
+			const inferred = yield* inferIssueKey();
+
 			if (!inferred) {
 				return yield* Effect.fail(
-					new Error("Issue reference not provided and could not infer from Git branch"),
+					ValidationError(
+						"Issue reference not provided and could not infer from Git branch",
+						"issueRef",
+					),
 				);
 			}
-			ctx.logger.debug("Inferred issue from branch", { inferred });
+
+			yield* logDebug("Inferred issue from branch", { inferred });
 			return inferred;
 		});
 	}

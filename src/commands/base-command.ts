@@ -9,6 +9,7 @@ import type {
 	CacheService,
 	ConfigService,
 	GitService,
+	LinearClientService,
 	LoggerService,
 	OutputService,
 } from "../services";
@@ -31,7 +32,13 @@ type ContextFactory = (
 ) => Promise<CommandContext>;
 
 // Effect services type for new commands
-export type AppServices = ConfigService | CacheService | GitService | LoggerService | OutputService;
+export type AppServices =
+	| ConfigService
+	| CacheService
+	| GitService
+	| LinearClientService
+	| LoggerService
+	| OutputService;
 
 export abstract class BaseCommand extends Command {
 	// Legacy: Context factory for testing

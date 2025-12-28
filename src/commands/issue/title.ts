@@ -1,7 +1,7 @@
 import { Command } from "clipanion";
 import { Effect } from "effect";
 
-import { CliContext, runCommandEffect } from "../../runtime/effect";
+import { getIssue, write } from "../../services";
 import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
 
 export class IssueTitleCommand extends IssueBaseCommand {
@@ -31,25 +31,23 @@ Failure Modes:
 
 	async execute(): Promise<number> {
 		const self = this;
-		return this.withContext(async (context) => {
-			const program = Effect.gen(function* () {
-				const ctx = yield* CliContext;
+
+		return this.run(
+			Effect.gen(function* () {
 				const issueRef = yield* self.resolveIssueRefEffect();
-				const issue = yield* Effect.promise(() => ctx.service.getIssue(issueRef));
+				const issue = yield* getIssue(issueRef);
 
 				if (self.json) {
-					ctx.output.write({
+					yield* write({
 						identifier: issue.identifier,
 						title: issue.title,
 					});
 				} else {
-					ctx.output.write(issue.title);
+					yield* write(issue.title);
 				}
 
 				return 0;
-			});
-
-			return runCommandEffect(context, program);
-		});
+			}),
+		);
 	}
 }

@@ -1,12 +1,21 @@
 import { Command, Option } from "clipanion";
 import { Effect } from "effect";
 
-import type { IssueSummary } from "../../linear/client";
-import { CliContext, runCommandEffect } from "../../runtime/effect";
-import type { CommandContext } from "../base-command";
+import {
+	getDefaults,
+	getUsers,
+	getWorkflowStates,
+	listIssues,
+	write,
+	type IssueSummary,
+} from "../../services";
 import { BaseCommand } from "../base-command";
 import { ISSUE_USAGE_CATEGORY } from "./base";
-import { normalizeOptionString, resolveAssigneeId, resolveStateId } from "./helpers";
+import {
+	normalizeOptionString,
+	resolveAssigneeIdEffect,
+	resolveStateIdEffect,
+} from "./helpers";
 
 export class IssueListCommand extends BaseCommand {
 	static paths = [["issue", "list"]];
@@ -69,52 +78,46 @@ Failure Modes:
 
 	async execute(): Promise<number> {
 		const self = this;
-		return this.withContext(async (context) => {
-			const program = Effect.gen(function* () {
-				const ctx = yield* CliContext;
 
-				const teamFilter = normalizeOptionString(self.team) ?? ctx.config.defaults.teamId;
-				const stateFilter =
-					normalizeOptionString(self.state) ?? ctx.config.defaults.workflowStateId;
+		return this.run(
+			Effect.gen(function* () {
+				const defaults = yield* getDefaults();
+
+				const teamFilter = normalizeOptionString(self.team) ?? defaults.teamId;
+				const stateFilter = normalizeOptionString(self.state) ?? defaults.workflowStateId;
 				const assigneeFilter = normalizeOptionString(self.assignee);
-				const projectFilter = normalizeOptionString(self.project) ?? ctx.config.defaults.projectId;
+				const projectFilter = normalizeOptionString(self.project) ?? defaults.projectId;
 				const limitValue = normalizeOptionString(self.limit);
 				const limit = limitValue ? Number.parseInt(limitValue, 10) : undefined;
 
-				const resolvedStateId = yield* Effect.promise(() =>
-					resolveStateId(ctx, stateFilter, teamFilter),
-				);
-				const resolvedAssigneeId = yield* Effect.promise(() =>
-					resolveAssigneeId(ctx, assigneeFilter, teamFilter),
-				);
+				const resolvedStateId = yield* resolveStateIdEffect(stateFilter, teamFilter);
+				const resolvedAssigneeId = yield* resolveAssigneeIdEffect(assigneeFilter, teamFilter);
 
-				const issues = yield* Effect.promise(() =>
-					ctx.service.listIssues({
-						teamId: teamFilter,
-						stateId: resolvedStateId,
-						assigneeId: resolvedAssigneeId,
-						projectId: projectFilter,
-						limit,
-					}),
-				);
+				const issues = yield* listIssues({
+					teamId: teamFilter,
+					stateId: resolvedStateId,
+					assigneeId: resolvedAssigneeId,
+					projectId: projectFilter,
+					limit,
+				});
 
 				if (self.json) {
-					ctx.output.write({ issues });
+					yield* write({ issues });
 					return 0;
 				}
 
-				const summary = yield* Effect.promise(() => self.enrichIssues(ctx, issues));
-				ctx.output.write(formatIssueTable(summary));
+				const summary = yield* enrichIssues(issues);
+				yield* write(formatIssueTable(summary));
 				return 0;
-			});
-
-			return runCommandEffect(context, program);
-		});
+			}),
+		);
 	}
+}
 
-	private async enrichIssues(context: CommandContext, issues: IssueSummary[]) {
-		const states = await context.service.getWorkflowStates();
-		const users = await context.service.getUsers();
+function enrichIssues(issues: IssueSummary[]) {
+	return Effect.gen(function* () {
+		const states = yield* getWorkflowStates();
+		const users = yield* getUsers();
 
 		const stateMap = new Map(states.map((state) => [state.id, state.name]));
 		const userMap = new Map(users.map((user) => [user.id, user.name]));
@@ -126,7 +129,7 @@ Failure Modes:
 			assignee: issue.assigneeId ? (userMap.get(issue.assigneeId) ?? issue.assigneeId) : "",
 			updatedAt: issue.updatedAt,
 		}));
-	}
+	});
 }
 
 interface IssueListView {
