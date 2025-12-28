@@ -112,6 +112,66 @@ export function getEnvOverrides(env = process.env): EnvOverrides {
 }
 
 // -----------------------------------------------------------------------------
+// Legacy Config Migration
+// -----------------------------------------------------------------------------
+
+interface LegacyConfigFile {
+	apiKey?: string;
+	apiHost?: string;
+	output?: "plain" | "json";
+	defaults?: {
+		teamId?: string;
+		assigneeId?: string;
+		workflowStateId?: string;
+		projectId?: string;
+	};
+}
+
+function migrateLegacyConfig(legacy: LegacyConfigFile): ConfigFile {
+	// Convert old flat config to new profile-based config
+	const defaultProfile: Profile = {
+		apiKey: legacy.apiKey ?? "",
+		apiHost: legacy.apiHost ?? DEFAULT_API_HOST,
+		defaults: legacy.defaults ?? {},
+	};
+
+	return {
+		activeProfile: DEFAULT_PROFILE_NAME,
+		output: legacy.output,
+		profiles: {
+			[DEFAULT_PROFILE_NAME]: defaultProfile,
+		},
+	};
+}
+
+function isLegacyConfig(config: unknown): config is LegacyConfigFile {
+	if (typeof config !== "object" || config === null) {
+		return false;
+	}
+	const obj = config as Record<string, unknown>;
+	// Legacy config has apiKey at root level, not in profiles
+	return "apiKey" in obj && !("profiles" in obj);
+}
+
+function normalizeConfigFile(raw: unknown): ConfigFile {
+	if (!raw || typeof raw !== "object") {
+		return emptyConfigFile();
+	}
+
+	if (isLegacyConfig(raw)) {
+		return migrateLegacyConfig(raw);
+	}
+
+	// Ensure profiles exists
+	const config = raw as Partial<ConfigFile>;
+	return {
+		activeProfile: config.activeProfile,
+		output: config.output,
+		profiles: config.profiles ?? {},
+	};
+}
+
+// -----------------------------------------------------------------------------
 // Config Resolution
 // -----------------------------------------------------------------------------
 
@@ -138,8 +198,9 @@ export function loadConfigSync(options: LoadConfigOptions = {}): ResolvedConfig 
 	const paths = getConfigPaths(homeDir);
 	const envOverrides = getEnvOverrides(env);
 
-	// Load config file
-	const configFile = readConfigFile(paths.configFile) ?? emptyConfigFile();
+	// Load config file and normalize (handles legacy format)
+	const rawConfig = readConfigFile(paths.configFile);
+	const configFile = normalizeConfigFile(rawConfig);
 
 	// Determine active profile
 	const activeProfile =
