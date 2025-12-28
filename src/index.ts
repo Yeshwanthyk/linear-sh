@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { Cli, Command } from "clipanion";
+import { Effect } from "effect";
 
 import packageJson from "../package.json" assert { type: "json" };
 import { BaseCommand } from "./commands/base-command";
@@ -13,6 +14,12 @@ import { IssueTitleCommand } from "./commands/issue/title";
 import { IssueUpdateCommand } from "./commands/issue/update";
 import { IssueUrlCommand } from "./commands/issue/url";
 import { IssueViewCommand } from "./commands/issue/view";
+import { ProfileAddCommand } from "./commands/profile/add";
+import { ProfileListCommand } from "./commands/profile/list";
+import { ProfileRemoveCommand } from "./commands/profile/remove";
+import { ProfileShowCommand } from "./commands/profile/show";
+import { ProfileUseCommand } from "./commands/profile/use";
+import { getConfig, success, warn } from "./services";
 
 class RootCommand extends BaseCommand {
 	static paths = [[]];
@@ -35,24 +42,24 @@ Outputs:
 	});
 
 	async execute(): Promise<number> {
-		return this.withContext(
-			(context) => {
-				const hasKey = Boolean(context.config.apiKey);
+		return this.run(
+			Effect.gen(function* () {
+				const config = yield* getConfig();
+				const hasKey = Boolean(config.profile.apiKey);
 
 				if (!hasKey) {
-					context.output.warn(
-						"No Linear API key configured. Set LINEAR_API_KEY or provide config files.",
-					);
-					return Promise.resolve(1);
+					yield* warn("No Linear API key configured. Set LINEAR_API_KEY or configure a profile.");
+					return 1;
 				}
 
-				context.output.success("Linear CLI ready", {
-					apiHost: context.config.apiHost,
-					defaults: context.config.defaults,
+				yield* success("Linear CLI ready", {
+					profile: config.activeProfile,
+					apiHost: config.profile.apiHost,
+					defaults: config.profile.defaults,
 				});
 
-				return Promise.resolve(0);
-			},
+				return 0;
+			}),
 			{ requireApiKey: false },
 		);
 	}
@@ -68,6 +75,7 @@ const commandClasses = [
 	CompactHelpCommand,
 	DetailedHelpCommand,
 	RootCommand,
+	// Issue commands
 	IssueViewCommand,
 	IssueListCommand,
 	IssueIdCommand,
@@ -77,6 +85,12 @@ const commandClasses = [
 	IssueUpdateCommand,
 	IssueStartCommand,
 	IssuePrCommand,
+	// Profile commands
+	ProfileAddCommand,
+	ProfileListCommand,
+	ProfileRemoveCommand,
+	ProfileShowCommand,
+	ProfileUseCommand,
 ];
 
 for (const commandClass of commandClasses) {

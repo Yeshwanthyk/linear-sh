@@ -153,7 +153,7 @@ function isLegacyConfig(config: unknown): config is LegacyConfigFile {
 	return "apiKey" in obj && !("profiles" in obj);
 }
 
-function normalizeConfigFile(raw: unknown): ConfigFile {
+export function normalizeConfigFile(raw: unknown): ConfigFile {
 	if (!raw || typeof raw !== "object") {
 		return emptyConfigFile();
 	}

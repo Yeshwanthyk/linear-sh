@@ -2,15 +2,10 @@ import { LinearClient } from "@linear/sdk";
 import { Effect } from "effect";
 
 import { ConfigError, LinearApiError, type LinearError } from "../errors";
-import {
-	type ConfigFile,
-	type Profile,
-	type ProfileDefaults,
-	DEFAULT_API_HOST,
-	emptyConfigFile,
-} from "./schema";
+import { type ConfigFile, type Profile, type ProfileDefaults, DEFAULT_API_HOST } from "./schema";
 import {
 	getConfigPaths,
+	normalizeConfigFile,
 	readActiveProfile,
 	readConfigFile,
 	writeActiveProfile,
@@ -31,7 +26,8 @@ export interface ProfileSummary {
 
 export function listProfiles(homeDir?: string): ProfileSummary[] {
 	const paths = getConfigPaths(homeDir);
-	const config = readConfigFile(paths.configFile) ?? emptyConfigFile();
+	const rawConfig = readConfigFile(paths.configFile);
+	const config = normalizeConfigFile(rawConfig);
 	const active = readActiveProfile(paths.activeProfileFile) ?? config.activeProfile ?? "default";
 
 	return Object.entries(config.profiles).map(([name, profile]) => ({
@@ -45,7 +41,8 @@ export function listProfiles(homeDir?: string): ProfileSummary[] {
 
 export function getProfile(name: string, homeDir?: string): Profile | undefined {
 	const paths = getConfigPaths(homeDir);
-	const config = readConfigFile(paths.configFile) ?? emptyConfigFile();
+	const rawConfig = readConfigFile(paths.configFile);
+	const config = normalizeConfigFile(rawConfig);
 	return config.profiles[name];
 }
 
@@ -53,7 +50,8 @@ export function setActiveProfile(name: string, homeDir?: string): Effect.Effect<
 	return Effect.try({
 		try: () => {
 			const paths = getConfigPaths(homeDir);
-			const config = readConfigFile(paths.configFile) ?? emptyConfigFile();
+			const rawConfig = readConfigFile(paths.configFile);
+			const config = normalizeConfigFile(rawConfig);
 
 			if (!config.profiles[name]) {
 				throw new Error(`Profile "${name}" does not exist`);
@@ -79,7 +77,8 @@ export function addProfile(
 ): Effect.Effect<Profile, LinearError> {
 	return Effect.gen(function* () {
 		const paths = getConfigPaths(homeDir);
-		const config: ConfigFile = readConfigFile(paths.configFile) ?? emptyConfigFile();
+		const rawConfig = readConfigFile(paths.configFile);
+		const config: ConfigFile = normalizeConfigFile(rawConfig);
 
 		// Fetch org info from API
 		const orgInfo = yield* fetchOrgInfo(options.apiKey, options.apiHost);
@@ -111,7 +110,8 @@ export function removeProfile(name: string, homeDir?: string): Effect.Effect<voi
 	return Effect.try({
 		try: () => {
 			const paths = getConfigPaths(homeDir);
-			const config: ConfigFile = readConfigFile(paths.configFile) ?? emptyConfigFile();
+			const rawConfig = readConfigFile(paths.configFile);
+			const config: ConfigFile = normalizeConfigFile(rawConfig);
 
 			if (!config.profiles[name]) {
 				throw new Error(`Profile "${name}" does not exist`);

@@ -1416,7 +1416,7 @@ Add CLI commands for profile management.
 
 ## Prerequisites
 
-- [ ] Phase 5 complete (at least BaseCommand)
+- [x] Phase 5 complete (at least BaseCommand)
 
 ## Changes
 
@@ -1762,10 +1762,14 @@ linear-sh profile list --json  # Works
 
 **Manual**:
 
-- [ ] `linear-sh profile add --name test --api-key xxx` creates profile
-- [ ] `linear-sh profile use test` switches profile
-- [ ] `linear-sh profile show` displays config
-- [ ] `linear-sh profile remove test` removes profile
+- [x] `linear-sh profile add --name test --api-key xxx` creates profile (API validated)
+- [x] `linear-sh profile use test` switches profile
+- [x] `linear-sh profile show` displays config
+- [x] `linear-sh profile remove test` removes profile
+
+---
+
+# Phase 6 Complete ✅
 
 ---
 
