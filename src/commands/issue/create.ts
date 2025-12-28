@@ -5,11 +5,7 @@ import enquirer from "enquirer";
 import { CliContext, runCommandEffect } from "../../runtime/effect";
 import { BaseCommand } from "../base-command";
 import { ISSUE_USAGE_CATEGORY } from "./base";
-import {
-	normalizeOptionString,
-	normalizeOptionStringArray,
-	resolveAssigneeId,
-} from "./helpers";
+import { normalizeOptionString, normalizeOptionStringArray, resolveAssigneeId } from "./helpers";
 
 export class IssueCreateCommand extends BaseCommand {
 	static paths = [["issue", "create"]];
@@ -82,9 +78,7 @@ Failure Modes:
 			const program = Effect.gen(function* () {
 				const issueInput = yield* self.collectInputEffect();
 				const ctx = yield* CliContext;
-				const issue = yield* Effect.promise(() =>
-					ctx.service.createIssue(issueInput),
-				);
+				const issue = yield* Effect.promise(() => ctx.service.createIssue(issueInput));
 
 				if (self.json) {
 					ctx.output.write({ issue });
@@ -140,19 +134,15 @@ Failure Modes:
 				return yield* Effect.fail(new Error("Issue title is required"));
 			}
 
-			const teamId =
-				normalizeOptionString(self.team) ?? context.config.defaults.teamId;
+			const teamId = normalizeOptionString(self.team) ?? context.config.defaults.teamId;
 			if (!teamId) {
-				return yield* Effect.fail(
-					new Error("Team ID is required (set via --team or config)"),
-				);
+				return yield* Effect.fail(new Error("Team ID is required (set via --team or config)"));
 			}
 
 			const assigneeId = yield* Effect.promise(() =>
 				resolveAssigneeId(
 					context,
-					normalizeOptionString(self.assignee) ??
-						context.config.defaults.assigneeId,
+					normalizeOptionString(self.assignee) ?? context.config.defaults.assigneeId,
 					teamId,
 				),
 			);

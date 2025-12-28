@@ -90,20 +90,12 @@ Failure Modes:
 			const program = Effect.gen(function* () {
 				const ctx = yield* CliContext;
 				const issueRef = self.resolveIssueRef(ctx);
-				const issue = yield* Effect.promise(() =>
-					ctx.service.getIssue(issueRef),
-				);
+				const issue = yield* Effect.promise(() => ctx.service.getIssue(issueRef));
 
-				let updateInput = yield* self.buildUpdateInputEffect(
-					ctx,
-					issue.id,
-					issue.teamId,
-				);
+				let updateInput = yield* self.buildUpdateInputEffect(ctx, issue.id, issue.teamId);
 
 				if (!updateInput) {
-					const interactive = yield* Effect.sync(
-						() => process.stdin.isTTY === true,
-					);
+					const interactive = yield* Effect.sync(() => process.stdin.isTTY === true);
 					if (interactive) {
 						const comment = yield* self.promptForCommentEffect();
 						if (comment) {
@@ -119,9 +111,7 @@ Failure Modes:
 
 				const hasFieldUpdates = Object.keys(updateInput.fields).length > 0;
 				const updated = hasFieldUpdates
-					? yield* Effect.promise(() =>
-							ctx.service.updateIssue(issue.id, updateInput!.fields),
-						)
+					? yield* Effect.promise(() => ctx.service.updateIssue(issue.id, updateInput!.fields))
 					: issue;
 
 				if (updateInput.comment) {

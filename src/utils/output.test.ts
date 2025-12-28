@@ -7,11 +7,7 @@ import { createOutput } from "./output";
 class MemoryWritable extends Writable {
 	private readonly chunks: Buffer[] = [];
 
-	_write(
-		chunk: Buffer,
-		_encoding: string,
-		callback: (error?: Error | null) => void,
-	) {
+	_write(chunk: Buffer, _encoding: string, callback: (error?: Error | null) => void) {
 		this.chunks.push(Buffer.from(chunk));
 		callback();
 	}
@@ -48,9 +44,7 @@ describe("createOutput", () => {
 			code: "LINEAR_API_ERROR",
 		});
 
-		expect(stderr.toString().trim()).toBe(
-			"Error: [LINEAR_API_ERROR] Forbidden",
-		);
+		expect(stderr.toString().trim()).toBe("Error: [LINEAR_API_ERROR] Forbidden");
 		expect(stdout.toString()).toBe("");
 	});
 });

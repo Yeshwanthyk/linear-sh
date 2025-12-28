@@ -35,9 +35,7 @@ Failure Modes:
 			const program = Effect.gen(function* () {
 				const ctx = yield* CliContext;
 				const issueRef = yield* self.resolveIssueRefEffect();
-				const issue = yield* Effect.promise(() =>
-					ctx.service.getIssue(issueRef),
-				);
+				const issue = yield* Effect.promise(() => ctx.service.getIssue(issueRef));
 
 				if (self.json) {
 					ctx.output.write({

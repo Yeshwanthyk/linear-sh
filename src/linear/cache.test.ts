@@ -24,9 +24,7 @@ describe("MetadataCache", () => {
 		});
 
 		await cache.set("workflowStates:team", [{ id: "state-1" }]);
-		const value = await cache.get<Array<Record<string, string>>>(
-			"workflowStates:team",
-		);
+		const value = await cache.get<Array<Record<string, string>>>("workflowStates:team");
 		expect(value).toEqual([{ id: "state-1" }]);
 	});
 

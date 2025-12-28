@@ -43,11 +43,7 @@ export function createLogger(options: LoggerOptions = {}): Logger {
 		target.write(`${payload}\n`);
 	};
 
-	const serialize = (
-		levelName: LogLevel,
-		message: string,
-		metadata?: LogContext,
-	): string => {
+	const serialize = (levelName: LogLevel, message: string, metadata?: LogContext): string => {
 		if (json) {
 			const payload = {
 				level: levelName,

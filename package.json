@@ -2,29 +2,37 @@
 	"name": "linear-sh",
 	"version": "0.1.0",
 	"description": "Bun-based CLI for interacting with Linear issues",
-	"type": "module",
+	"keywords": [
+		"automation",
+		"cli",
+		"linear"
+	],
 	"bin": {
 		"linear-sh": "./bin/linear.mjs"
 	},
+	"type": "module",
 	"scripts": {
 		"build": "bun build ./src/index.ts --outfile ./bin/linear.mjs --target bun --minify",
 		"lint": "oxlint src/",
-		"format": "bunx biome format --write .",
+		"lint:fix": "oxlint src/ --fix",
+		"format": "oxfmt --write .",
+		"format:check": "oxfmt --check .",
 		"test": "bun test",
+		"test:unit": "bun test --grep 'unit|accessor|pure'",
+		"test:integration": "ALLOW_TEST_NETWORK=1 bun test --grep 'integration'",
 		"typecheck": "bunx tsc --noEmit",
-		"check": "bun run typecheck && bun run lint && bun run test"
+		"check": "bun run typecheck && bun run lint && bun run format:check && bun run test:unit"
 	},
 	"dependencies": {
-		"@linear/sdk": "^60.0.0",
-		"clipanion": "^3.2.1",
-		"enquirer": "^2.4.1",
-		"effect": "3.13.1",
 		"@effect/platform": "0.87.12",
 		"@effect/platform-node": "0.89.5",
+		"@linear/sdk": "^60.0.0",
+		"clipanion": "^3.2.1",
+		"effect": "3.13.1",
+		"enquirer": "^2.4.1",
 		"zx": "^8.1.2"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^1.8.3",
 		"@types/node": "^20.11.19",
 		"bun-types": "^1.1.25",
 		"oxlint": "^1.33.0",
@@ -32,6 +40,5 @@
 	},
 	"engines": {
 		"bun": ">=1.1.0"
-	},
-	"keywords": ["linear", "cli", "automation"]
+	}
 }

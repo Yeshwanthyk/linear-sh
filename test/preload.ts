@@ -9,7 +9,5 @@ globalThis.fetch = (async (...args: Parameters<typeof fetch>) => {
 	}
 
 	const target = typeof args[0] === "string" ? args[0] : args[0].toString();
-	throw new Error(
-		`Network access blocked during tests (attempted to fetch ${target})`,
-	);
+	throw new Error(`Network access blocked during tests (attempted to fetch ${target})`);
 }) as typeof fetch;

@@ -3,6 +3,7 @@
 ## Overview
 
 Complete modernization of linear-sh covering:
+
 - **Linting**: Switch to oxlint + oxfmt, stricter TypeScript
 - **Effect Migration**: Full Effect-first architecture
 - **Multi-org/Profiles**: Profile support with org namespacing
@@ -13,6 +14,7 @@ Complete modernization of linear-sh covering:
 ## Current State
 
 ### Architecture
+
 ```
 src/
 ├── commands/           # Clipanion commands (mixed old/new patterns)
@@ -33,6 +35,7 @@ src/
 ```
 
 ### Key Discoveries
+
 1. **Commands use old pattern**: `BaseCommand.buildContext()` creates class-based `LinearService`
 2. **Effect partially integrated**: `runCommandEffect()` bridges old context to Effect
 3. **No profile support**: Config has single `apiKey`, `defaults` - no named profiles
@@ -40,6 +43,7 @@ src/
 5. **Tests use mock layers**: Good pattern in `git.test.ts`, `linear.test.ts`
 
 ### Files to Delete After Migration
+
 - `src/linear/client.ts` (old LinearService class)
 - `src/linear/cache.ts` (old MetadataCache class)
 - `src/linear/types.ts` (duplicated in services)
@@ -73,6 +77,7 @@ src/
 ```
 
 ### Verification
+
 ```bash
 bun run check           # typecheck + lint + test
 linear-sh profile list  # Shows profiles
@@ -93,17 +98,21 @@ bun test                # All pass, no network calls
 # Phase 1: Linting & TypeScript Strictness
 
 ## Overview
+
 Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 
 ## Prerequisites
+
 - [ ] None
 
 ## Changes
 
 ### 1. Remove Biome
+
 **File**: `package.json`
 
 **Before**:
+
 ```json
 "devDependencies": {
   "@biomejs/biome": "^1.8.3",
@@ -112,6 +121,7 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 ```
 
 **After**:
+
 ```json
 "devDependencies": {
   ...
@@ -121,9 +131,11 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 **Also delete**: `biome.json`
 
 ### 2. Configure oxlint
+
 **File**: `.oxlintrc.json`
 
 **After** (replace entire file):
+
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
@@ -147,15 +159,15 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
     "typescript/no-misused-promises": "error",
     "typescript/ban-ts-comment": ["error", { "ts-expect-error": "allow-with-description" }],
     "typescript/no-this-alias": "off",
-    
+
     "no-await-in-loop": "warn",
     "prefer-const": "error",
     "no-var": "error",
     "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-    
+
     "import/no-cycle": "error",
     "import/no-default-export": "off",
-    
+
     "promise/no-floating-promises": "error"
   },
   "ignorePatterns": ["bin/**", "dist/**", "node_modules/**"]
@@ -163,6 +175,7 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 ```
 
 ### 3. Configure oxfmt
+
 **File**: `.oxfmtrc.json` (new)
 
 ```json
@@ -178,9 +191,11 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 ```
 
 ### 4. Stricter tsconfig
+
 **File**: `tsconfig.json`
 
 **Before**:
+
 ```json
 {
   "compilerOptions": {
@@ -194,6 +209,7 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 ```
 
 **After**:
+
 ```json
 {
   "compilerOptions": {
@@ -220,9 +236,11 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 ```
 
 ### 5. Update package.json scripts
+
 **File**: `package.json`
 
 **Before**:
+
 ```json
 "scripts": {
   "lint": "oxlint src/",
@@ -232,6 +250,7 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 ```
 
 **After**:
+
 ```json
 "scripts": {
   "build": "bun build ./src/index.ts --outfile ./bin/linear.mjs --target bun --minify",
@@ -248,9 +267,11 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 ```
 
 ### 6. Update .gitignore
+
 **File**: `.gitignore`
 
 **Add**:
+
 ```
 # Build artifacts
 linear-sh
@@ -261,6 +282,7 @@ index
 ## Success Criteria
 
 **Automated**:
+
 ```bash
 bun run typecheck        # Zero errors
 bun run lint             # Zero errors (after fixes)
@@ -268,10 +290,12 @@ bun run format:check     # Zero differences
 ```
 
 **Manual**:
+
 - [ ] `biome.json` deleted
 - [ ] No `@biomejs/biome` in node_modules after `bun install`
 
 ## Rollback
+
 ```bash
 git checkout HEAD -- package.json tsconfig.json .oxlintrc.json biome.json
 ```
@@ -281,14 +305,17 @@ git checkout HEAD -- package.json tsconfig.json .oxlintrc.json biome.json
 # Phase 2: Config & Profile Schema
 
 ## Overview
+
 Design and implement profile-aware configuration schema.
 
 ## Prerequisites
+
 - [ ] Phase 1 complete
 
 ## Changes
 
 ### 1. Profile Schema Types
+
 **File**: `src/config/schema.ts` (new)
 
 ```typescript
@@ -353,6 +380,7 @@ export const emptyConfigFile = (): ConfigFile => ({
 ```
 
 ### 2. Config Loader
+
 **File**: `src/config/loader.ts` (new)
 
 ```typescript
@@ -452,7 +480,7 @@ export function getEnvOverrides(env = process.env): EnvOverrides {
     apiKey: env.LINEAR_API_KEY,
     apiHost: env.LINEAR_API_HOST ?? env.LINEAR_API_BASE,
     profile: env.LINEAR_PROFILE,
-    output: env.LINEAR_OUTPUT_FORMAT === "json" ? "json" : 
+    output: env.LINEAR_OUTPUT_FORMAT === "json" ? "json" :
             env.LINEAR_OUTPUT_FORMAT === "plain" ? "plain" : undefined,
     defaults: {
       teamId: env.LINEAR_DEFAULT_TEAM_ID ?? env.LINEAR_TEAM_ID,
@@ -486,24 +514,24 @@ export function loadConfig(options: LoadConfigOptions = {}): Effect.Effect<Resol
 export function loadConfigSync(options: LoadConfigOptions = {}): ResolvedConfig {
   const homeDir = options.homeDir ?? os.homedir();
   const env = options.env ?? process.env;
-  
+
   const paths = getConfigPaths(homeDir);
   const envOverrides = getEnvOverrides(env);
-  
+
   // Load config file
   const configFile = readConfigFile(paths.configFile) ?? emptyConfigFile();
-  
+
   // Determine active profile
-  const activeProfile = 
+  const activeProfile =
     options.profileOverride ??
     envOverrides.profile ??
     readActiveProfile(paths.activeProfileFile) ??
     configFile.activeProfile ??
     DEFAULT_PROFILE_NAME;
-  
+
   // Get profile, creating empty if doesn't exist
   const baseProfile = configFile.profiles[activeProfile] ?? emptyProfile();
-  
+
   // Merge env overrides into profile
   const profile: Profile = {
     apiKey: envOverrides.apiKey ?? baseProfile.apiKey,
@@ -517,16 +545,16 @@ export function loadConfigSync(options: LoadConfigOptions = {}): ResolvedConfig 
       ),
     },
   };
-  
+
   // Validate
   if (options.requireApiKey !== false && !profile.apiKey) {
     throw new Error(
       "Linear API key is required. Set LINEAR_API_KEY or configure a profile."
     );
   }
-  
+
   const cacheDir = getCacheDir(paths.baseCacheDir, profile.orgId);
-  
+
   return {
     activeProfile,
     profile,
@@ -542,6 +570,7 @@ export function loadConfigSync(options: LoadConfigOptions = {}): ResolvedConfig 
 ```
 
 ### 3. Profile Manager
+
 **File**: `src/config/profile.ts` (new)
 
 ```typescript
@@ -581,7 +610,7 @@ export function listProfiles(homeDir?: string): ProfileSummary[] {
   const paths = getConfigPaths(homeDir);
   const config = readConfigFile(paths.configFile) ?? emptyConfigFile();
   const active = readActiveProfile(paths.activeProfileFile) ?? config.activeProfile ?? "default";
-  
+
   return Object.entries(config.profiles).map(([name, profile]) => ({
     name,
     orgName: profile.orgName,
@@ -602,11 +631,11 @@ export function setActiveProfile(name: string, homeDir?: string): Effect.Effect<
     try: () => {
       const paths = getConfigPaths(homeDir);
       const config = readConfigFile(paths.configFile) ?? emptyConfigFile();
-      
+
       if (!config.profiles[name]) {
         throw new Error(`Profile "${name}" does not exist`);
       }
-      
+
       writeActiveProfile(paths.activeProfileFile, name);
     },
     catch: (error) => ConfigError(
@@ -627,10 +656,10 @@ export function addProfile(options: AddProfileOptions, homeDir?: string): Effect
   return Effect.gen(function* () {
     const paths = getConfigPaths(homeDir);
     const config = readConfigFile(paths.configFile) ?? emptyConfigFile();
-    
+
     // Fetch org info from API
     const orgInfo = yield* fetchOrgInfo(options.apiKey, options.apiHost);
-    
+
     const profile: Profile = {
       apiKey: options.apiKey,
       apiHost: options.apiHost ?? DEFAULT_API_HOST,
@@ -638,18 +667,18 @@ export function addProfile(options: AddProfileOptions, homeDir?: string): Effect
       orgName: orgInfo.name,
       defaults: options.defaults ?? {},
     };
-    
+
     config.profiles[options.name] = profile;
-    
+
     yield* Effect.try({
       try: () => writeConfigFile(paths.configFile, config),
       catch: (error) => ConfigError(`Failed to write config: ${String(error)}`),
     });
-    
+
     if (options.setActive) {
       yield* setActiveProfile(options.name, homeDir);
     }
-    
+
     return profile;
   });
 }
@@ -659,19 +688,19 @@ export function removeProfile(name: string, homeDir?: string): Effect.Effect<voi
     try: () => {
       const paths = getConfigPaths(homeDir);
       const config = readConfigFile(paths.configFile) ?? emptyConfigFile();
-      
+
       if (!config.profiles[name]) {
         throw new Error(`Profile "${name}" does not exist`);
       }
-      
+
       const active = readActiveProfile(paths.activeProfileFile) ?? config.activeProfile;
       if (active === name) {
         throw new Error(`Cannot remove active profile "${name}". Switch to another profile first.`);
       }
-      
+
       delete config.profiles[name];
       writeConfigFile(paths.configFile, config);
-      
+
       // Optionally: clean up cache for this profile's orgId
     },
     catch: (error) => ConfigError(
@@ -696,14 +725,14 @@ function fetchOrgInfo(apiKey: string, apiHost?: string): Effect.Effect<OrgInfo, 
         apiKey,
         apiUrl: apiHost ?? DEFAULT_API_HOST,
       });
-      
+
       const viewer = await client.viewer;
       const org = await viewer.organization;
-      
+
       if (!org) {
         throw new Error("Could not fetch organization info");
       }
-      
+
       return {
         id: org.id,
         name: org.name,
@@ -719,6 +748,7 @@ function fetchOrgInfo(apiKey: string, apiHost?: string): Effect.Effect<OrgInfo, 
 ```
 
 ### 4. Export Index
+
 **File**: `src/config/index.ts` (new)
 
 ```typescript
@@ -760,16 +790,19 @@ export {
 ## Success Criteria
 
 **Automated**:
+
 ```bash
 bun run typecheck        # Zero errors
 bun test src/config/     # Tests pass (write in Phase 5)
 ```
 
 **Manual**:
+
 - [ ] Can create `~/.config/linear-sh/config.json` with profile structure
 - [ ] `loadConfigSync()` resolves profile from env/file
 
 ## Rollback
+
 ```bash
 rm -rf src/config/
 git checkout HEAD -- src/config.ts
@@ -780,17 +813,21 @@ git checkout HEAD -- src/config.ts
 # Phase 3: Update Services for Profiles
 
 ## Overview
+
 Update ConfigService and CacheService to use profile-aware config.
 
 ## Prerequisites
+
 - [ ] Phase 2 complete
 
 ## Changes
 
 ### 1. Update ConfigService
+
 **File**: `src/services/config.ts`
 
 **Before** (key parts):
+
 ```typescript
 import { loadLinearConfig } from "../config";
 // ...
@@ -802,6 +839,7 @@ export interface ConfigService {
 ```
 
 **After** (full replacement):
+
 ```typescript
 import { Context, Effect, Layer } from "effect";
 
@@ -908,6 +946,7 @@ export const getActiveProfileName = (): Effect.Effect<string, LinearError, Confi
 ```
 
 ### 2. Update CacheService for org-namespacing
+
 **File**: `src/services/cache.ts`
 
 **Key change**: Use `getCacheDir()` from ConfigService instead of hardcoded path.
@@ -923,9 +962,11 @@ const cacheDir = yield* configService.getCacheDir();
 ```
 
 ### 3. Update services/index.ts exports
+
 **File**: `src/services/index.ts`
 
 **Add** to ConfigService exports:
+
 ```typescript
 export {
   ConfigService,
@@ -943,12 +984,14 @@ export {
 ## Success Criteria
 
 **Automated**:
+
 ```bash
 bun run typecheck        # Zero errors
 bun test src/services/   # Tests pass
 ```
 
 **Manual**:
+
 - [ ] ConfigService resolves profile from config file
 - [ ] Cache files written to org-namespaced directory
 
@@ -957,14 +1000,17 @@ bun test src/services/   # Tests pass
 # Phase 4: Effect-Native BaseCommand
 
 ## Overview
+
 Rewrite BaseCommand to provide Effect layers instead of class instances.
 
 ## Prerequisites
+
 - [ ] Phase 3 complete
 
 ## Changes
 
 ### 1. New CliRuntime module
+
 **File**: `src/runtime/cli.ts` (new, replaces effect.ts)
 
 ```typescript
@@ -1000,13 +1046,13 @@ export interface AppLayerOptions {
   readonly requireApiKey?: boolean;
 }
 
-export type AppServices = 
-  | ConfigService 
-  | CacheService 
-  | LinearClientService 
-  | LinearService 
-  | GitService 
-  | LoggerService 
+export type AppServices =
+  | ConfigService
+  | CacheService
+  | LinearClientService
+  | LinearService
+  | GitService
+  | LoggerService
   | OutputService;
 
 export function makeAppLayer(
@@ -1057,11 +1103,11 @@ export async function runCommand<E, A>(
   options: RunOptions = {},
 ): Promise<A> {
   const layer = makeAppLayer(options);
-  
+
   const runnable = Effect.provide(program, layer);
-  
+
   const exit = await Effect.runPromiseExit(runnable);
-  
+
   return Effect.Exit.match(exit, {
     onSuccess: (value) => value,
     onFailure: (cause) => {
@@ -1083,9 +1129,11 @@ export function runCommandExit<E>(
 ```
 
 ### 2. Rewrite BaseCommand
+
 **File**: `src/commands/base-command.ts`
 
 **After** (full replacement):
+
 ```typescript
 import { Command, Option } from "clipanion";
 import { Effect } from "effect";
@@ -1132,7 +1180,7 @@ export abstract class BaseCommand extends Command {
     options?: Partial<AppLayerOptions>,
   ): Promise<number> {
     const layerOptions = { ...this.getLayerOptions(), ...options };
-    
+
     return runCommandExit(program, {
       ...layerOptions,
       onError: (error) => this.reportError(error),
@@ -1147,7 +1195,7 @@ export abstract class BaseCommand extends Command {
     // Just write to stderr directly
     const message = error.message;
     const code = "code" in error ? String(error.code) : "ERROR";
-    
+
     if (this.json) {
       console.error(JSON.stringify({ error: { message, code } }));
     } else {
@@ -1158,6 +1206,7 @@ export abstract class BaseCommand extends Command {
 ```
 
 ### 3. Delete old runtime/effect.ts
+
 **File**: `src/runtime/effect.ts`
 
 **Delete** this file after migration.
@@ -1165,11 +1214,13 @@ export abstract class BaseCommand extends Command {
 ## Success Criteria
 
 **Automated**:
+
 ```bash
 bun run typecheck        # Zero errors
 ```
 
 **Manual**:
+
 - [ ] Commands can extend BaseCommand and use `this.run(program)`
 - [ ] Layers compose correctly
 
@@ -1178,9 +1229,11 @@ bun run typecheck        # Zero errors
 # Phase 5: Command Migration
 
 ## Overview
+
 Migrate all issue commands to pure Effect.
 
 ## Prerequisites
+
 - [ ] Phase 4 complete
 
 ## Changes
@@ -1188,6 +1241,7 @@ Migrate all issue commands to pure Effect.
 Each command follows this pattern:
 
 **Before** (example: view):
+
 ```typescript
 async execute(): Promise<number> {
   return this.withContext(async (context) => {
@@ -1201,6 +1255,7 @@ async execute(): Promise<number> {
 ```
 
 **After**:
+
 ```typescript
 async execute(): Promise<number> {
   return this.run(
@@ -1231,6 +1286,7 @@ async execute(): Promise<number> {
 **File**: `src/commands/issue/view.ts`
 
 **After**:
+
 ```typescript
 import { Command, Option } from "clipanion";
 import { Effect } from "effect";
@@ -1261,27 +1317,27 @@ export class IssueViewCommand extends IssueBaseCommand {
 
   async execute(): Promise<number> {
     const self = this;
-    
+
     return this.run(
       Effect.gen(function* () {
         // Resolve issue ref (from arg or git branch)
         const issueRef = yield* self.resolveIssueRefEffect();
-        
+
         // Fetch details
         const details = yield* getIssueDetails(issueRef);
-        
+
         // Open in browser if requested
         if (self.open && details.url) {
           yield* Effect.promise(() => openInBrowser(details.url));
         }
-        
+
         // Output
         if (self.json) {
           yield* write({ issue: details });
         } else {
           yield* write(formatIssueDetails(details));
         }
-        
+
         return 0;
       })
     );
@@ -1310,20 +1366,20 @@ export abstract class IssueBaseCommand extends BaseCommand {
 
   protected resolveIssueRefEffect(fallbackToGit = true) {
     const ref = this.issueRef;
-    
+
     return Effect.gen(function* () {
       if (ref) {
         return ref;
       }
-      
+
       if (!fallbackToGit) {
         return yield* Effect.fail(
           ValidationError("Issue reference is required", "issueRef")
         );
       }
-      
+
       const inferred = yield* inferIssueKey();
-      
+
       if (!inferred) {
         return yield* Effect.fail(
           ValidationError(
@@ -1332,7 +1388,7 @@ export abstract class IssueBaseCommand extends BaseCommand {
           )
         );
       }
-      
+
       return inferred;
     });
   }
@@ -1342,6 +1398,7 @@ export abstract class IssueBaseCommand extends BaseCommand {
 ## Success Criteria
 
 **Automated**:
+
 ```bash
 bun run typecheck        # Zero errors
 bun test                 # All pass
@@ -1354,14 +1411,17 @@ linear-sh issue list     # Works
 # Phase 6: Profile Commands
 
 ## Overview
+
 Add CLI commands for profile management.
 
 ## Prerequisites
+
 - [ ] Phase 5 complete (at least BaseCommand)
 
 ## Changes
 
 ### 1. Profile List Command
+
 **File**: `src/commands/profile/list.ts` (new)
 
 ```typescript
@@ -1382,11 +1442,11 @@ export class ProfileListCommand extends BaseCommand {
 
   async execute(): Promise<number> {
     const self = this;
-    
+
     return this.run(
       Effect.gen(function* () {
         const profiles = listProfiles();
-        
+
         if (self.json) {
           yield* write({ profiles });
         } else {
@@ -1401,7 +1461,7 @@ export class ProfileListCommand extends BaseCommand {
             yield* write(lines.join("\n"));
           }
         }
-        
+
         return 0;
       }),
       { requireApiKey: false }
@@ -1411,6 +1471,7 @@ export class ProfileListCommand extends BaseCommand {
 ```
 
 ### 2. Profile Add Command
+
 **File**: `src/commands/profile/add.ts` (new)
 
 ```typescript
@@ -1449,12 +1510,12 @@ export class ProfileAddCommand extends BaseCommand {
 
   async execute(): Promise<number> {
     const self = this;
-    
+
     return this.run(
       Effect.gen(function* () {
         let name = self.name;
         let apiKey = self.apiKey;
-        
+
         // Interactive prompts if needed
         if (!name || !apiKey) {
           const responses = yield* Effect.promise(() =>
@@ -1474,22 +1535,22 @@ export class ProfileAddCommand extends BaseCommand {
               },
             ])
           );
-          
+
           name = name ?? (responses as { name: string }).name;
           apiKey = apiKey ?? (responses as { apiKey: string }).apiKey;
         }
-        
+
         if (!name || !apiKey) {
           yield* write("Profile name and API key are required.");
           return 1;
         }
-        
+
         const profile = yield* addProfile({
           name,
           apiKey,
           setActive: self.setActive,
         });
-        
+
         if (self.json) {
           yield* write({ profile: { name, orgId: profile.orgId, orgName: profile.orgName } });
         } else {
@@ -1498,7 +1559,7 @@ export class ProfileAddCommand extends BaseCommand {
             active: self.setActive,
           });
         }
-        
+
         return 0;
       }),
       { requireApiKey: false }
@@ -1508,6 +1569,7 @@ export class ProfileAddCommand extends BaseCommand {
 ```
 
 ### 3. Profile Use Command
+
 **File**: `src/commands/profile/use.ts` (new)
 
 ```typescript
@@ -1530,13 +1592,13 @@ export class ProfileUseCommand extends BaseCommand {
 
   async execute(): Promise<number> {
     const self = this;
-    
+
     return this.run(
       Effect.gen(function* () {
         yield* setActiveProfile(self.name);
-        
+
         const profile = getProfile(self.name);
-        
+
         if (self.json) {
           yield* write({ activeProfile: self.name, orgName: profile?.orgName });
         } else {
@@ -1544,7 +1606,7 @@ export class ProfileUseCommand extends BaseCommand {
             organization: profile?.orgName,
           });
         }
-        
+
         return 0;
       }),
       { requireApiKey: false }
@@ -1554,6 +1616,7 @@ export class ProfileUseCommand extends BaseCommand {
 ```
 
 ### 4. Profile Remove Command
+
 **File**: `src/commands/profile/remove.ts` (new)
 
 ```typescript
@@ -1576,17 +1639,17 @@ export class ProfileRemoveCommand extends BaseCommand {
 
   async execute(): Promise<number> {
     const self = this;
-    
+
     return this.run(
       Effect.gen(function* () {
         yield* removeProfile(self.name);
-        
+
         if (self.json) {
           yield* write({ removed: self.name });
         } else {
           yield* success(`Removed profile "${self.name}"`);
         }
-        
+
         return 0;
       }),
       { requireApiKey: false }
@@ -1596,6 +1659,7 @@ export class ProfileRemoveCommand extends BaseCommand {
 ```
 
 ### 5. Profile Show Command
+
 **File**: `src/commands/profile/show.ts` (new)
 
 ```typescript
@@ -1615,11 +1679,11 @@ export class ProfileShowCommand extends BaseCommand {
 
   async execute(): Promise<number> {
     const self = this;
-    
+
     return this.run(
       Effect.gen(function* () {
         const config = yield* getConfig();
-        
+
         if (self.json) {
           yield* write({
             activeProfile: config.activeProfile,
@@ -1641,20 +1705,20 @@ export class ProfileShowCommand extends BaseCommand {
             "",
             "Defaults:",
           ];
-          
+
           const defaults = config.profile.defaults;
           if (defaults.teamId) lines.push(`  Team: ${defaults.teamId}`);
           if (defaults.assigneeId) lines.push(`  Assignee: ${defaults.assigneeId}`);
           if (defaults.workflowStateId) lines.push(`  State: ${defaults.workflowStateId}`);
           if (defaults.projectId) lines.push(`  Project: ${defaults.projectId}`);
-          
+
           if (Object.keys(defaults).length === 0) {
             lines.push("  (none)");
           }
-          
+
           yield* write(lines.join("\n"));
         }
-        
+
         return 0;
       }),
       { requireApiKey: false }
@@ -1664,9 +1728,11 @@ export class ProfileShowCommand extends BaseCommand {
 ```
 
 ### 6. Register Commands
+
 **File**: `src/index.ts`
 
 **Add imports and registration**:
+
 ```typescript
 import { ProfileAddCommand } from "./commands/profile/add";
 import { ProfileListCommand } from "./commands/profile/list";
@@ -1688,12 +1754,14 @@ const commandClasses = [
 ## Success Criteria
 
 **Automated**:
+
 ```bash
 bun run typecheck
 linear-sh profile list --json  # Works
 ```
 
 **Manual**:
+
 - [ ] `linear-sh profile add --name test --api-key xxx` creates profile
 - [ ] `linear-sh profile use test` switches profile
 - [ ] `linear-sh profile show` displays config
@@ -1704,14 +1772,17 @@ linear-sh profile list --json  # Works
 # Phase 7: Discovery Commands
 
 ## Overview
+
 Add team list, state list, user list commands.
 
 ## Prerequisites
+
 - [ ] Phase 5 complete
 
 ## Changes
 
 ### 1. Team List Command
+
 **File**: `src/commands/team/list.ts` (new)
 
 ```typescript
@@ -1731,11 +1802,11 @@ export class TeamListCommand extends BaseCommand {
 
   async execute(): Promise<number> {
     const self = this;
-    
+
     return this.run(
       Effect.gen(function* () {
         const teams = yield* getTeams();
-        
+
         if (self.json) {
           yield* write({ teams });
         } else {
@@ -1746,7 +1817,7 @@ export class TeamListCommand extends BaseCommand {
             yield* write(lines.join("\n"));
           }
         }
-        
+
         return 0;
       })
     );
@@ -1755,6 +1826,7 @@ export class TeamListCommand extends BaseCommand {
 ```
 
 ### 2. State List Command
+
 **File**: `src/commands/state/list.ts` (new)
 
 ```typescript
@@ -1782,27 +1854,27 @@ export class StateListCommand extends BaseCommand {
 
   async execute(): Promise<number> {
     const self = this;
-    
+
     return this.run(
       Effect.gen(function* () {
         const config = yield* getConfig();
         const teamId = self.team ?? config.profile.defaults.teamId;
-        
+
         const states = yield* getWorkflowStates(teamId);
-        
+
         if (self.json) {
           yield* write({ states });
         } else {
           if (states.length === 0) {
             yield* write("No workflow states found.");
           } else {
-            const lines = states.map((s) => 
+            const lines = states.map((s) =>
               `${s.name.padEnd(20)} [${s.type.padEnd(10)}] ${s.id}`
             );
             yield* write(lines.join("\n"));
           }
         }
-        
+
         return 0;
       })
     );
@@ -1811,6 +1883,7 @@ export class StateListCommand extends BaseCommand {
 ```
 
 ### 3. User List Command
+
 **File**: `src/commands/user/list.ts` (new)
 
 ```typescript
@@ -1835,27 +1908,27 @@ export class UserListCommand extends BaseCommand {
 
   async execute(): Promise<number> {
     const self = this;
-    
+
     return this.run(
       Effect.gen(function* () {
         const config = yield* getConfig();
         const teamId = self.team ?? config.profile.defaults.teamId;
-        
+
         const users = yield* getUsers(teamId);
-        
+
         if (self.json) {
           yield* write({ users });
         } else {
           if (users.length === 0) {
             yield* write("No users found.");
           } else {
-            const lines = users.map((u) => 
+            const lines = users.map((u) =>
               `${u.name.padEnd(25)} ${u.email ?? ""} (${u.id})`
             );
             yield* write(lines.join("\n"));
           }
         }
-        
+
         return 0;
       })
     );
@@ -1864,6 +1937,7 @@ export class UserListCommand extends BaseCommand {
 ```
 
 ### 4. Register Commands
+
 **File**: `src/index.ts`
 
 Add imports and register commands.
@@ -1882,14 +1956,17 @@ linear-sh team list --json   # JSON output
 # Phase 8: Test Infrastructure
 
 ## Overview
+
 Build comprehensive test infrastructure with mocks and layers.
 
 ## Prerequisites
+
 - [ ] Phase 5 complete
 
 ## Changes
 
 ### 1. Mock Factories
+
 **File**: `src/test/mocks/linear.ts` (new)
 
 ```typescript
@@ -1940,6 +2017,7 @@ export const mockLinearClientService = (
 ```
 
 ### 2. Mock Cache
+
 **File**: `src/test/mocks/cache.ts` (new)
 
 ```typescript
@@ -1949,7 +2027,7 @@ import type { CacheService } from "../../services";
 
 export const mockCacheService = (): CacheService => {
   const store = new Map<string, unknown>();
-  
+
   return {
     get: <T>(key: string) => Effect.succeed(store.get(key) as T | undefined),
     set: <T>(key: string, value: T) => {
@@ -1969,6 +2047,7 @@ export const mockCacheService = (): CacheService => {
 ```
 
 ### 3. Test Layers
+
 **File**: `src/test/layers.ts` (new)
 
 ```typescript
@@ -2064,6 +2143,7 @@ export const runTest = <A, E>(effect: Effect.Effect<A, E, any>) =>
 ```
 
 ### 4. Update test/preload.ts
+
 **File**: `test/preload.ts`
 
 ```typescript
@@ -2078,12 +2158,12 @@ globalThis.fetch = (async (...args: Parameters<typeof fetch>) => {
   }
 
   const target = typeof args[0] === "string" ? args[0] : args[0].toString();
-  
+
   // Log blocked requests in CI for debugging
   if (process.env.CI) {
     console.error(`[TEST] Network blocked: ${target}`);
   }
-  
+
   throw new Error(
     `Network access blocked during tests (attempted to fetch ${target}). ` +
     `Use mock layers or set ALLOW_TEST_NETWORK=1 for integration tests.`
@@ -2104,9 +2184,11 @@ ALLOW_TEST_NETWORK=1 bun test   # Integration tests (manual)
 # Phase 9: Cleanup & Documentation
 
 ## Overview
+
 Delete old files, update docs.
 
 ## Prerequisites
+
 - [ ] All previous phases complete
 - [ ] All tests passing
 
@@ -2155,6 +2237,7 @@ fd -e ts . src --type f      # No old files
 ## Unit Tests
 
 Each service has corresponding `.test.ts` with:
+
 - Mock layer injection
 - All public methods tested
 - Error cases tested
@@ -2162,6 +2245,7 @@ Each service has corresponding `.test.ts` with:
 ## Integration Tests
 
 Mark with `describe.skip` by default, run with `ALLOW_TEST_NETWORK=1`:
+
 - Real API calls to sandbox org
 - Profile switching
 - Cache behavior
@@ -2190,7 +2274,7 @@ Mark with `describe.skip` by default, run with `ALLOW_TEST_NETWORK=1`:
 # Open Questions
 
 - [x] oxfmt config format? → JSON with .oxfmtrc.json
-- [x] Keep biome for anything? → No, full switch to ox* tools
+- [x] Keep biome for anything? → No, full switch to ox\* tools
 - [ ] Profile storage format versioning? → Future consideration
 - [ ] Migration path for existing users? → Detect old config, auto-migrate
 
@@ -2208,6 +2292,7 @@ Mark with `describe.skip` by default, run with `ALLOW_TEST_NETWORK=1`:
 ## Overview
 
 Complete modernization of linear-sh covering:
+
 - **Linting**: Switch to oxlint + oxfmt, stricter TypeScript
 - **Effect Migration**: Full Effect-first architecture
 - **Multi-org/Profiles**: Profile support with org namespacing
@@ -2218,6 +2303,7 @@ Complete modernization of linear-sh covering:
 ## Current State
 
 ### Architecture
+
 ```
 src/
 ├── commands/           # Clipanion commands (mixed old/new patterns)
@@ -2238,6 +2324,7 @@ src/
 ```
 
 ### Key Discoveries
+
 1. **Commands use old pattern**: `BaseCommand.buildContext()` creates class-based `LinearService`
 2. **Effect partially integrated**: `runCommandEffect()` bridges old context to Effect
 3. **No profile support**: Config has single `apiKey`, `defaults` - no named profiles
@@ -2245,6 +2332,7 @@ src/
 5. **Tests use mock layers**: Good pattern in `git.test.ts`, `linear.test.ts`
 
 ### Files to Delete After Migration
+
 - `src/linear/client.ts` (old LinearService class)
 - `src/linear/cache.ts` (old MetadataCache class)
 - `src/linear/types.ts` (duplicated in services)
@@ -2278,6 +2366,7 @@ src/
 ```
 
 ### Verification
+
 ```bash
 bun run check           # typecheck + lint + test
 linear-sh profile list  # Shows profiles
@@ -2298,17 +2387,21 @@ bun test                # All pass, no network calls
 # Phase 1: Linting & TypeScript Strictness
 
 ## Overview
+
 Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 
 ## Prerequisites
+
 - [x] None
 
 ## Changes
 
 ### 1. Remove Biome
+
 **File**: `package.json`
 
 **Before**:
+
 ```json
 "devDependencies": {
   "@biomejs/biome": "^1.8.3",
@@ -2317,6 +2410,7 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 ```
 
 **After**:
+
 ```json
 "devDependencies": {
   ...
@@ -2326,9 +2420,11 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 **Also delete**: `biome.json`
 
 ### 2. Configure oxlint
+
 **File**: `.oxlintrc.json`
 
 **After** (replace entire file):
+
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
@@ -2352,15 +2448,15 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
     "typescript/no-misused-promises": "error",
     "typescript/ban-ts-comment": ["error", { "ts-expect-error": "allow-with-description" }],
     "typescript/no-this-alias": "off",
-    
+
     "no-await-in-loop": "warn",
     "prefer-const": "error",
     "no-var": "error",
     "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-    
+
     "import/no-cycle": "error",
     "import/no-default-export": "off",
-    
+
     "promise/no-floating-promises": "error"
   },
   "ignorePatterns": ["bin/**", "dist/**", "node_modules/**"]
@@ -2368,6 +2464,7 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 ```
 
 ### 3. Configure oxfmt
+
 **File**: `.oxfmtrc.json` (new)
 
 ```json
@@ -2383,9 +2480,11 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 ```
 
 ### 4. Stricter tsconfig
+
 **File**: `tsconfig.json`
 
 **Before**:
+
 ```json
 {
   "compilerOptions": {
@@ -2399,6 +2498,7 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 ```
 
 **After**:
+
 ```json
 {
   "compilerOptions": {
@@ -2425,9 +2525,11 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 ```
 
 ### 5. Update package.json scripts
+
 **File**: `package.json`
 
 **Before**:
+
 ```json
 "scripts": {
   "lint": "oxlint src/",
@@ -2437,6 +2539,7 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 ```
 
 **After**:
+
 ```json
 "scripts": {
   "build": "bun build ./src/index.ts --outfile ./bin/linear.mjs --target bun --minify",
@@ -2453,9 +2556,11 @@ Remove Biome, configure oxlint strictly, add oxfmt, tighten tsconfig.
 ```
 
 ### 6. Update .gitignore
+
 **File**: `.gitignore`
 
 **Add**:
+
 ```
 # Build artifacts
 linear-sh
@@ -2466,6 +2571,7 @@ index
 ## Success Criteria
 
 **Automated**:
+
 ```bash
 bun run typecheck        # Zero errors
 bun run lint             # Zero errors (after fixes)
@@ -2473,10 +2579,12 @@ bun run format:check     # Zero differences
 ```
 
 **Manual**:
+
 - [x] `biome.json` deleted
 - [ ] No `@biomejs/biome` in node_modules after `bun install`
 
 ## Rollback
+
 ```bash
 git checkout HEAD -- package.json tsconfig.json .oxlintrc.json biome.json
 ```
@@ -2486,14 +2594,17 @@ git checkout HEAD -- package.json tsconfig.json .oxlintrc.json biome.json
 # Phase 2: Config & Profile Schema
 
 ## Overview
+
 Design and implement profile-aware configuration schema.
 
 ## Prerequisites
+
 - [ ] Phase 1 complete
 
 ## Changes
 
 ### 1. Profile Schema Types
+
 **File**: `src/config/schema.ts` (new)
 
 ```typescript
@@ -2556,6 +2667,7 @@ export const emptyConfigFile = (): ConfigFile => ({
 ```
 
 ### 2. Config Loader
+
 **File**: `src/config/loader.ts` (new)
 
 ```typescript
@@ -2655,7 +2767,7 @@ export function getEnvOverrides(env = process.env): EnvOverrides {
     apiKey: env.LINEAR_API_KEY,
     apiHost: env.LINEAR_API_HOST ?? env.LINEAR_API_BASE,
     profile: env.LINEAR_PROFILE,
-    output: env.LINEAR_OUTPUT_FORMAT === "json" ? "json" : 
+    output: env.LINEAR_OUTPUT_FORMAT === "json" ? "json" :
             env.LINEAR_OUTPUT_FORMAT === "plain" ? "plain" : undefined,
     defaults: {
       teamId: env.LINEAR_DEFAULT_TEAM_ID ?? env.LINEAR_TEAM_ID,
@@ -2689,24 +2801,24 @@ export function loadConfig(options: LoadConfigOptions = {}): Effect.Effect<Resol
 export function loadConfigSync(options: LoadConfigOptions = {}): ResolvedConfig {
   const homeDir = options.homeDir ?? os.homedir();
   const env = options.env ?? process.env;
-  
+
   const paths = getConfigPaths(homeDir);
   const envOverrides = getEnvOverrides(env);
-  
+
   // Load config file
   const configFile = readConfigFile(paths.configFile) ?? emptyConfigFile();
-  
+
   // Determine active profile
-  const activeProfile = 
+  const activeProfile =
     options.profileOverride ??
     envOverrides.profile ??
     readActiveProfile(paths.activeProfileFile) ??
     configFile.activeProfile ??
     DEFAULT_PROFILE_NAME;
-  
+
   // Get profile, creating empty if doesn't exist
   const baseProfile = configFile.profiles[activeProfile] ?? emptyProfile();
-  
+
   // Merge env overrides into profile
   const profile: Profile = {
     apiKey: envOverrides.apiKey ?? baseProfile.apiKey,
@@ -2720,16 +2832,16 @@ export function loadConfigSync(options: LoadConfigOptions = {}): ResolvedConfig 
       ),
     },
   };
-  
+
   // Validate
   if (options.requireApiKey !== false && !profile.apiKey) {
     throw new Error(
       "Linear API key is required. Set LINEAR_API_KEY or configure a profile."
     );
   }
-  
+
   const cacheDir = getCacheDir(paths.baseCacheDir, profile.orgId);
-  
+
   return {
     activeProfile,
     profile,
@@ -2745,6 +2857,7 @@ export function loadConfigSync(options: LoadConfigOptions = {}): ResolvedConfig 
 ```
 
 ### 3. Profile Manager
+
 **File**: `src/config/profile.ts` (new)
 
 ```typescript
@@ -2784,7 +2897,7 @@ export function listProfiles(homeDir?: string): ProfileSummary[] {
   const paths = getConfigPaths(homeDir);
   const config = readConfigFile(paths.configFile) ?? emptyConfigFile();
   const active = readActiveProfile(paths.activeProfileFile) ?? config.activeProfile ?? "default";
-  
+
   return Object.entries(config.profiles).map(([name, profile]) => ({
     name,
     orgName: profile.orgName,
@@ -2805,11 +2918,11 @@ export function setActiveProfile(name: string, homeDir?: string): Effect.Effect<
     try: () => {
       const paths = getConfigPaths(homeDir);
       const config = readConfigFile(paths.configFile) ?? emptyConfigFile();
-      
+
       if (!config.profiles[name]) {
         throw new Error(`Profile "${name}" does not exist`);
       }
-      
+
       writeActiveProfile(paths.activeProfileFile, name);
     },
     catch: (error) => ConfigError(
@@ -2830,10 +2943,10 @@ export function addProfile(options: AddProfileOptions, homeDir?: string): Effect
   return Effect.gen(function* () {
     const paths = getConfigPaths(homeDir);
     const config = readConfigFile(paths.configFile) ?? emptyConfigFile();
-    
+
     // Fetch org info from API
     const orgInfo = yield* fetchOrgInfo(options.apiKey, options.apiHost);
-    
+
     const profile: Profile = {
       apiKey: options.apiKey,
       apiHost: options.apiHost ?? DEFAULT_API_HOST,
@@ -2841,18 +2954,18 @@ export function addProfile(options: AddProfileOptions, homeDir?: string): Effect
       orgName: orgInfo.name,
       defaults: options.defaults ?? {},
     };
-    
+
     config.profiles[options.name] = profile;
-    
+
     yield* Effect.try({
       try: () => writeConfigFile(paths.configFile, config),
       catch: (error) => ConfigError(`Failed to write config: ${String(error)}`),
     });
-    
+
     if (options.setActive) {
       yield* setActiveProfile(options.name, homeDir);
     }
-    
+
     return profile;
   });
 }
@@ -2862,19 +2975,19 @@ export function removeProfile(name: string, homeDir?: string): Effect.Effect<voi
     try: () => {
       const paths = getConfigPaths(homeDir);
       const config = readConfigFile(paths.configFile) ?? emptyConfigFile();
-      
+
       if (!config.profiles[name]) {
         throw new Error(`Profile "${name}" does not exist`);
       }
-      
+
       const active = readActiveProfile(paths.activeProfileFile) ?? config.activeProfile;
       if (active === name) {
         throw new Error(`Cannot remove active profile "${name}". Switch to another profile first.`);
       }
-      
+
       delete config.profiles[name];
       writeConfigFile(paths.configFile, config);
-      
+
       // Optionally: clean up cache for this profile's orgId
     },
     catch: (error) => ConfigError(
@@ -2899,14 +3012,14 @@ function fetchOrgInfo(apiKey: string, apiHost?: string): Effect.Effect<OrgInfo, 
         apiKey,
         apiUrl: apiHost ?? DEFAULT_API_HOST,
       });
-      
+
       const viewer = await client.viewer;
       const org = await viewer.organization;
-      
+
       if (!org) {
         throw new Error("Could not fetch organization info");
       }
-      
+
       return {
         id: org.id,
         name: org.name,
@@ -2922,6 +3035,7 @@ function fetchOrgInfo(apiKey: string, apiHost?: string): Effect.Effect<OrgInfo, 
 ```
 
 ### 4. Export Index
+
 **File**: `src/config/index.ts` (new)
 
 ```typescript
@@ -2963,16 +3077,19 @@ export {
 ## Success Criteria
 
 **Automated**:
+
 ```bash
 bun run typecheck        # Zero errors
 bun test src/config/     # Tests pass (write in Phase 5)
 ```
 
 **Manual**:
+
 - [ ] Can create `~/.config/linear-sh/config.json` with profile structure
 - [ ] `loadConfigSync()` resolves profile from env/file
 
 ## Rollback
+
 ```bash
 rm -rf src/config/
 git checkout HEAD -- src/config.ts
@@ -2983,17 +3100,21 @@ git checkout HEAD -- src/config.ts
 # Phase 3: Update Services for Profiles
 
 ## Overview
+
 Update ConfigService and CacheService to use profile-aware config.
 
 ## Prerequisites
+
 - [ ] Phase 2 complete
 
 ## Changes
 
 ### 1. Update ConfigService
+
 **File**: `src/services/config.ts`
 
 **Before** (key parts):
+
 ```typescript
 import { loadLinearConfig } from "../config";
 // ...
@@ -3005,6 +3126,7 @@ export interface ConfigService {
 ```
 
 **After** (full replacement):
+
 ```typescript
 import { Context, Effect, Layer } from "effect";
 
@@ -3111,6 +3233,7 @@ export const getActiveProfileName = (): Effect.Effect<string, LinearError, Confi
 ```
 
 ### 2. Update CacheService for org-namespacing
+
 **File**: `src/services/cache.ts`
 
 **Key change**: Use `getCacheDir()` from ConfigService instead of hardcoded path.
@@ -3126,9 +3249,11 @@ const cacheDir = yield* configService.getCacheDir();
 ```
 
 ### 3. Update services/index.ts exports
+
 **File**: `src/services/index.ts`
 
 **Add** to ConfigService exports:
+
 ```typescript
 export {
   ConfigService,
@@ -3146,12 +3271,14 @@ export {
 ## Success Criteria
 
 **Automated**:
+
 ```bash
 bun run typecheck        # Zero errors
 bun test src/services/   # Tests pass
 ```
 
 **Manual**:
+
 - [ ] ConfigService resolves profile from config file
 - [ ] Cache files written to org-namespaced directory
 
@@ -3160,14 +3287,17 @@ bun test src/services/   # Tests pass
 # Phase 4: Effect-Native BaseCommand
 
 ## Overview
+
 Rewrite BaseCommand to provide Effect layers instead of class instances.
 
 ## Prerequisites
+
 - [ ] Phase 3 complete
 
 ## Changes
 
 ### 1. New CliRuntime module
+
 **File**: `src/runtime/cli.ts` (new, replaces effect.ts)
 
 ```typescript
@@ -3203,13 +3333,13 @@ export interface AppLayerOptions {
   readonly requireApiKey?: boolean;
 }
 
-export type AppServices = 
-  | ConfigService 
-  | CacheService 
-  | LinearClientService 
-  | LinearService 
-  | GitService 
-  | LoggerService 
+export type AppServices =
+  | ConfigService
+  | CacheService
+  | LinearClientService
+  | LinearService
+  | GitService
+  | LoggerService
   | OutputService;
 
 export function makeAppLayer(
@@ -3260,11 +3390,11 @@ export async function runCommand<E, A>(
   options: RunOptions = {},
 ): Promise<A> {
   const layer = makeAppLayer(options);
-  
+
   const runnable = Effect.provide(program, layer);
-  
+
   const exit = await Effect.runPromiseExit(runnable);
-  
+
   return Effect.Exit.match(exit, {
     onSuccess: (value) => value,
     onFailure: (cause) => {
@@ -3286,9 +3416,11 @@ export function runCommandExit<E>(
 ```
 
 ### 2. Rewrite BaseCommand
+
 **File**: `src/commands/base-command.ts`
 
 **After** (full replacement):
+
 ```typescript
 import { Command, Option } from "clipanion";
 import { Effect } from "effect";
@@ -3333,7 +3465,7 @@ export abstract class BaseCommand extends Command {
     options?: Partial<AppLayerOptions>,
   ): Promise<number> {
     const layerOptions = { ...this.getLayerOptions(), ...options };
-    
+
     return runCommandExit(program, {
       ...layerOptions,
       onError: (error) => this.reportError(error),
@@ -3346,7 +3478,7 @@ export abstract class BaseCommand extends Command {
   private reportError(error: Error): void {
     const message = error.message;
     const code = "code" in error ? String(error.code) : "ERROR";
-    
+
     if (this.json) {
       console.error(JSON.stringify({ error: { message, code } }));
     } else {
@@ -3357,6 +3489,7 @@ export abstract class BaseCommand extends Command {
 ```
 
 ### 3. Delete old runtime/effect.ts
+
 **File**: `src/runtime/effect.ts`
 
 **Delete** this file after migration.
@@ -3364,11 +3497,13 @@ export abstract class BaseCommand extends Command {
 ## Success Criteria
 
 **Automated**:
+
 ```bash
 bun run typecheck        # Zero errors
 ```
 
 **Manual**:
+
 - [ ] Commands can extend BaseCommand and use `this.run(program)`
 - [ ] Layers compose correctly
 
@@ -3377,9 +3512,11 @@ bun run typecheck        # Zero errors
 # Phase 5: Command Migration
 
 ## Overview
+
 Migrate all issue commands to pure Effect.
 
 ## Prerequisites
+
 - [ ] Phase 4 complete
 
 ## Changes
@@ -3387,6 +3524,7 @@ Migrate all issue commands to pure Effect.
 Each command follows this pattern:
 
 **Before** (example: view):
+
 ```typescript
 async execute(): Promise<number> {
   return this.withContext(async (context) => {
@@ -3400,6 +3538,7 @@ async execute(): Promise<number> {
 ```
 
 **After**:
+
 ```typescript
 async execute(): Promise<number> {
   return this.run(
@@ -3444,20 +3583,20 @@ export abstract class IssueBaseCommand extends BaseCommand {
 
   protected resolveIssueRefEffect(fallbackToGit = true) {
     const ref = this.issueRef;
-    
+
     return Effect.gen(function* () {
       if (ref) {
         return ref;
       }
-      
+
       if (!fallbackToGit) {
         return yield* Effect.fail(
           ValidationError("Issue reference is required", "issueRef")
         );
       }
-      
+
       const inferred = yield* inferIssueKey();
-      
+
       if (!inferred) {
         return yield* Effect.fail(
           ValidationError(
@@ -3466,7 +3605,7 @@ export abstract class IssueBaseCommand extends BaseCommand {
           )
         );
       }
-      
+
       return inferred;
     });
   }
@@ -3476,6 +3615,7 @@ export abstract class IssueBaseCommand extends BaseCommand {
 ## Success Criteria
 
 **Automated**:
+
 ```bash
 bun run typecheck        # Zero errors
 bun test                 # All pass
@@ -3488,40 +3628,50 @@ linear-sh issue list     # Works
 # Phase 6: Profile Commands
 
 ## Overview
+
 Add CLI commands for profile management.
 
 ## Prerequisites
+
 - [ ] Phase 5 complete (at least BaseCommand)
 
 ## Changes
 
 ### 1. Profile List Command
+
 **File**: `src/commands/profile/list.ts` (new)
 
 ### 2. Profile Add Command
+
 **File**: `src/commands/profile/add.ts` (new)
 
 ### 3. Profile Use Command
+
 **File**: `src/commands/profile/use.ts` (new)
 
 ### 4. Profile Remove Command
+
 **File**: `src/commands/profile/remove.ts` (new)
 
 ### 5. Profile Show Command
+
 **File**: `src/commands/profile/show.ts` (new)
 
 ### 6. Register Commands
+
 **File**: `src/index.ts`
 
 ## Success Criteria
 
 **Automated**:
+
 ```bash
 bun run typecheck
 linear-sh profile list --json  # Works
 ```
 
 **Manual**:
+
 - [ ] `linear-sh profile add --name test --api-key xxx` creates profile
 - [ ] `linear-sh profile use test` switches profile
 - [ ] `linear-sh profile show` displays config
@@ -3532,20 +3682,25 @@ linear-sh profile list --json  # Works
 # Phase 7: Discovery Commands
 
 ## Overview
+
 Add team list, state list, user list commands.
 
 ## Prerequisites
+
 - [ ] Phase 5 complete
 
 ## Changes
 
 ### 1. Team List Command
+
 **File**: `src/commands/team/list.ts` (new)
 
 ### 2. State List Command
+
 **File**: `src/commands/state/list.ts` (new)
 
 ### 3. User List Command
+
 **File**: `src/commands/user/list.ts` (new)
 
 ### 4. Register Commands in `src/index.ts`
@@ -3564,20 +3719,25 @@ linear-sh team list --json   # JSON output
 # Phase 8: Test Infrastructure
 
 ## Overview
+
 Build comprehensive test infrastructure with mocks and layers.
 
 ## Prerequisites
+
 - [ ] Phase 5 complete
 
 ## Changes
 
 ### 1. Mock Factories
+
 **File**: `src/test/mocks/linear.ts` (new)
 
 ### 2. Mock Cache
+
 **File**: `src/test/mocks/cache.ts` (new)
 
 ### 3. Test Layers
+
 **File**: `src/test/layers.ts` (new)
 
 ### 4. Update test/preload.ts
@@ -3595,9 +3755,11 @@ ALLOW_TEST_NETWORK=1 bun test   # Integration tests (manual)
 # Phase 9: Cleanup & Documentation
 
 ## Overview
+
 Delete old files, update docs.
 
 ## Prerequisites
+
 - [ ] All previous phases complete
 - [ ] All tests passing
 
@@ -3646,6 +3808,7 @@ fd -e ts . src --type f      # No old files
 ## Unit Tests
 
 Each service has corresponding `.test.ts` with:
+
 - Mock layer injection
 - All public methods tested
 - Error cases tested
@@ -3653,6 +3816,7 @@ Each service has corresponding `.test.ts` with:
 ## Integration Tests
 
 Mark with `describe.skip` by default, run with `ALLOW_TEST_NETWORK=1`:
+
 - Real API calls to sandbox org
 - Profile switching
 - Cache behavior
@@ -3681,7 +3845,7 @@ Mark with `describe.skip` by default, run with `ALLOW_TEST_NETWORK=1`:
 # Open Questions
 
 - [x] oxfmt config format? → JSON with .oxfmtrc.json
-- [x] Keep biome for anything? → No, full switch to ox* tools
+- [x] Keep biome for anything? → No, full switch to ox\* tools
 - [ ] Profile storage format versioning? → Future consideration
 - [ ] Migration path for existing users? → Detect old config, auto-migrate
 
@@ -3693,4 +3857,3 @@ Mark with `describe.skip` by default, run with `ALLOW_TEST_NETWORK=1`:
 - Effect docs: https://effect.website
 - oxlint rules: `npx oxlint --rules`
 - Linear SDK: https://developers.linear.app/docs/sdk
-

@@ -72,9 +72,7 @@ describe("loadLinearConfig", () => {
 			assigneeId: "env-assignee",
 		});
 		expect(config.paths.userFile).toBe(userConfigPath);
-		expect(config.paths.repoFile).toBe(
-			path.join(projectRoot, REPO_CONFIG_FILENAME),
-		);
+		expect(config.paths.repoFile).toBe(path.join(projectRoot, REPO_CONFIG_FILENAME));
 	});
 
 	test("throws when API key missing and requireApiKey is true", () => {

@@ -11,10 +11,7 @@ export const ISSUE_USAGE_CATEGORY = "Issue workflows";
 export abstract class IssueBaseCommand extends BaseCommand {
 	issueRef = Option.String({ required: false });
 
-	protected resolveIssueRef(
-		context: CommandContext,
-		fallbackToGit = true,
-	): string {
+	protected resolveIssueRef(context: CommandContext, fallbackToGit = true): string {
 		if (this.issueRef) {
 			return this.issueRef;
 		}
@@ -23,9 +20,7 @@ export abstract class IssueBaseCommand extends BaseCommand {
 		}
 		const inferred = inferIssueKeyFromRepository();
 		if (!inferred) {
-			throw new Error(
-				"Issue reference not provided and could not infer from Git branch",
-			);
+			throw new Error("Issue reference not provided and could not infer from Git branch");
 		}
 		context.logger.debug("Inferred issue from branch", { inferred });
 		return inferred;
@@ -45,9 +40,7 @@ export abstract class IssueBaseCommand extends BaseCommand {
 			const inferred = inferIssueKeyFromRepository();
 			if (!inferred) {
 				return yield* Effect.fail(
-					new Error(
-						"Issue reference not provided and could not infer from Git branch",
-					),
+					new Error("Issue reference not provided and could not infer from Git branch"),
 				);
 			}
 			ctx.logger.debug("Inferred issue from branch", { inferred });

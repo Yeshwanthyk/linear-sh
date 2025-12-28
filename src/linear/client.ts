@@ -43,22 +43,14 @@ interface LinearClientLike {
 		term: string,
 		variables?: Record<string, unknown>,
 	): PromiseLike<IssueSearchPayloadEntity>;
-	issues(
-		variables: Record<string, unknown>,
-	): PromiseLike<IssueConnectionEntity>;
-	createIssue(variables: {
-		input: Record<string, unknown>;
-	}): PromiseLike<IssueMutationPayload>;
+	issues(variables: Record<string, unknown>): PromiseLike<IssueConnectionEntity>;
+	createIssue(variables: { input: Record<string, unknown> }): PromiseLike<IssueMutationPayload>;
 	issueUpdate(variables: {
 		id: string;
 		input: Record<string, unknown>;
 	}): PromiseLike<IssueMutationPayload>;
-	commentCreate(variables: {
-		input: Record<string, unknown>;
-	}): PromiseLike<CommentMutationPayload>;
-	workflowStates(
-		variables: Record<string, unknown>,
-	): PromiseLike<WorkflowStateConnectionEntity>;
+	commentCreate(variables: { input: Record<string, unknown> }): PromiseLike<CommentMutationPayload>;
+	workflowStates(variables: Record<string, unknown>): PromiseLike<WorkflowStateConnectionEntity>;
 	users(variables: Record<string, unknown>): PromiseLike<UserConnectionEntity>;
 }
 
@@ -77,18 +69,14 @@ interface LinearIssueEntity {
 	priorityLabel?: string | null;
 	createdAt?: Date;
 	updatedAt?: Date;
-	labels?: (
-		variables?: Record<string, unknown>,
-	) => Promise<IssueLabelConnectionEntity>;
+	labels?: (variables?: Record<string, unknown>) => Promise<IssueLabelConnectionEntity>;
 	team?: (
 		variables?: Record<string, unknown>,
 	) => Promise<{ id: string; name: string; key?: string | null } | null>;
 	assignee?: (
 		variables?: Record<string, unknown>,
 	) => Promise<{ id: string; name: string; email?: string | null } | null>;
-	project?: (
-		variables?: Record<string, unknown>,
-	) => Promise<{ id: string; name: string } | null>;
+	project?: (variables?: Record<string, unknown>) => Promise<{ id: string; name: string } | null>;
 }
 
 interface IssueConnectionEntity {
@@ -122,10 +110,7 @@ interface IssueLabelConnectionEntity {
 }
 
 interface GraphqlRequester {
-	request(
-		document: unknown,
-		variables: Record<string, unknown>,
-	): PromiseLike<unknown>;
+	request(document: unknown, variables: Record<string, unknown>): PromiseLike<unknown>;
 }
 
 // GraphQL mutation response types
@@ -164,17 +149,12 @@ export class LinearService {
 	private readonly graphqlClient?: GraphqlRequester;
 
 	constructor(options: LinearServiceOptions) {
-		this.cache =
-			options.cache === null
-				? undefined
-				: (options.cache ?? new MetadataCache());
+		this.cache = options.cache === null ? undefined : (options.cache ?? new MetadataCache());
 		this.maxListItems = options.maxListItems ?? DEFAULT_MAX_LIST_ITEMS;
 
 		if (options.client) {
 			this.client = options.client;
-			this.graphqlClient = isGraphqlRequester(options.client)
-				? options.client
-				: undefined;
+			this.graphqlClient = isGraphqlRequester(options.client) ? options.client : undefined;
 		} else {
 			const baseClient = new LinearClient({
 				apiKey: options.config.apiKey,
@@ -182,9 +162,7 @@ export class LinearService {
 			});
 			this.client = baseClient as unknown as LinearClientLike;
 			const underlying = (baseClient as unknown as { client?: unknown }).client;
-			this.graphqlClient = isGraphqlRequester(underlying)
-				? underlying
-				: undefined;
+			this.graphqlClient = isGraphqlRequester(underlying) ? underlying : undefined;
 		}
 	}
 
@@ -209,9 +187,7 @@ export class LinearService {
 		const summary = this.mapIssue(issue);
 
 		const [states, users, labels, team] = await Promise.all([
-			summary.teamId
-				? this.getWorkflowStates(summary.teamId)
-				: Promise.resolve([]),
+			summary.teamId ? this.getWorkflowStates(summary.teamId) : Promise.resolve([]),
 			this.getUsers(),
 			this.fetchLabelSummaries(issue),
 			this.fetchTeam(issue),
@@ -235,9 +211,7 @@ export class LinearService {
 			const filter = this.buildIssueFilter(options);
 			const response = await this.client.issues({
 				filter: Object.keys(filter).length > 0 ? filter : undefined,
-				first: options.projectId
-					? this.maxListItems * 2
-					: (options.limit ?? this.maxListItems), // Fetch more if we need to filter by project
+				first: options.projectId ? this.maxListItems * 2 : (options.limit ?? this.maxListItems), // Fetch more if we need to filter by project
 				orderBy: "updatedAt",
 			});
 
@@ -247,9 +221,7 @@ export class LinearService {
 			// Apply project filtering client-side since Linear API doesn't support it directly
 			let filteredNodes = mappedNodes;
 			if (options.projectId) {
-				filteredNodes = mappedNodes.filter(
-					(issue) => issue.projectId === options.projectId,
-				);
+				filteredNodes = mappedNodes.filter((issue) => issue.projectId === options.projectId);
 			}
 
 			// Apply limit after project filtering
@@ -266,19 +238,16 @@ export class LinearService {
 	async createIssue(input: IssueCreateInput): Promise<IssueSummary> {
 		try {
 			const client = this.getGraphqlClient();
-			const response = (await client.request(
-				LinearDocument.CreateIssueDocument,
-				{
-					input: {
-						teamId: input.teamId,
-						title: input.title,
-						description: input.description ?? null,
-						assigneeId: input.assigneeId,
-						labelIds: input.labelIds,
-						projectId: input.projectId,
-					},
+			const response = (await client.request(LinearDocument.CreateIssueDocument, {
+				input: {
+					teamId: input.teamId,
+					title: input.title,
+					description: input.description ?? null,
+					assigneeId: input.assigneeId,
+					labelIds: input.labelIds,
+					projectId: input.projectId,
 				},
-			)) as IssueCreateResponse;
+			})) as IssueCreateResponse;
 
 			if (!response?.issueCreate?.success || !response?.issueCreate?.issue) {
 				throw new LinearApiError("Linear API did not return created issue");
@@ -290,30 +259,22 @@ export class LinearService {
 		}
 	}
 
-	async updateIssue(
-		issueId: string,
-		input: IssueUpdateInput,
-	): Promise<IssueSummary> {
+	async updateIssue(issueId: string, input: IssueUpdateInput): Promise<IssueSummary> {
 		try {
 			const client = this.getGraphqlClient();
-			const response = (await client.request(
-				LinearDocument.UpdateIssueDocument,
-				{
-					id: issueId,
-					input: {
-						title: input.title,
-						description: input.description ?? undefined,
-						assigneeId: input.assigneeId,
-						stateId: input.stateId,
-						labelIds: input.labelIds,
-					},
+			const response = (await client.request(LinearDocument.UpdateIssueDocument, {
+				id: issueId,
+				input: {
+					title: input.title,
+					description: input.description ?? undefined,
+					assigneeId: input.assigneeId,
+					stateId: input.stateId,
+					labelIds: input.labelIds,
 				},
-			)) as IssueUpdateResponse;
+			})) as IssueUpdateResponse;
 
 			if (!response?.issueUpdate?.success || !response?.issueUpdate?.issue) {
-				throw new LinearApiError(
-					`Linear API did not return updated issue ${issueId}`,
-				);
+				throw new LinearApiError(`Linear API did not return updated issue ${issueId}`);
 			}
 
 			return this.mapIssue(response.issueUpdate.issue);
@@ -322,46 +283,31 @@ export class LinearService {
 		}
 	}
 
-	async transitionIssue(
-		issueId: string,
-		workflowStateId: string,
-	): Promise<IssueSummary> {
+	async transitionIssue(issueId: string, workflowStateId: string): Promise<IssueSummary> {
 		return this.updateIssue(issueId, { stateId: workflowStateId });
 	}
 
 	async createComment(input: CommentInput): Promise<string> {
 		try {
 			const client = this.getGraphqlClient();
-			const response = (await client.request(
-				LinearDocument.CreateCommentDocument,
-				{
-					input: {
-						issueId: input.issueId,
-						body: input.body,
-					},
+			const response = (await client.request(LinearDocument.CreateCommentDocument, {
+				input: {
+					issueId: input.issueId,
+					body: input.body,
 				},
-			)) as CommentCreateResponse;
+			})) as CommentCreateResponse;
 
-			if (
-				!response?.commentCreate?.success ||
-				!response?.commentCreate?.comment
-			) {
+			if (!response?.commentCreate?.success || !response?.commentCreate?.comment) {
 				throw new LinearApiError("Failed to create comment");
 			}
 
 			return response.commentCreate.comment.id;
 		} catch (error) {
-			throw this.toLinearApiError(
-				error,
-				`Failed to comment on issue ${input.issueId}`,
-			);
+			throw this.toLinearApiError(error, `Failed to comment on issue ${input.issueId}`);
 		}
 	}
 
-	async getWorkflowStates(
-		teamId?: string,
-		forceRefresh = false,
-	): Promise<WorkflowStateSummary[]> {
+	async getWorkflowStates(teamId?: string, forceRefresh = false): Promise<WorkflowStateSummary[]> {
 		const cacheKey = `workflowStates:${teamId ?? "all"}`;
 		if (!forceRefresh) {
 			const cached = await this.cache?.get<WorkflowStateSummary[]>(cacheKey);
@@ -389,10 +335,7 @@ export class LinearService {
 		}
 	}
 
-	async getUsers(
-		teamId?: string,
-		forceRefresh = false,
-	): Promise<UserSummary[]> {
+	async getUsers(teamId?: string, forceRefresh = false): Promise<UserSummary[]> {
 		const cacheKey = `users:${teamId ?? "all"}`;
 		if (!forceRefresh) {
 			const cached = await this.cache?.get<UserSummary[]>(cacheKey);
@@ -404,9 +347,7 @@ export class LinearService {
 		try {
 			const response = await this.client.users({
 				first: this.maxListItems,
-				filter: teamId
-					? { teams: { some: { id: { eq: teamId } } } }
-					: undefined,
+				filter: teamId ? { teams: { some: { id: { eq: teamId } } } } : undefined,
 			});
 			const nodes = response?.nodes ?? [];
 			const normalised = nodes.map((node) => ({
@@ -445,10 +386,7 @@ export class LinearService {
 				return match;
 			}
 		} catch (error) {
-			throw this.toLinearApiError(
-				error,
-				`Failed to search for issue ${trimmed}`,
-			);
+			throw this.toLinearApiError(error, `Failed to search for issue ${trimmed}`);
 		}
 
 		throw new LinearApiError(`Issue ${trimmed} not found`, 404);
@@ -473,9 +411,7 @@ export class LinearService {
 		};
 	}
 
-	private async fetchLabelSummaries(
-		issue: LinearIssueEntity,
-	): Promise<IssueLabelSummary[]> {
+	private async fetchLabelSummaries(issue: LinearIssueEntity): Promise<IssueLabelSummary[]> {
 		if (typeof issue.labels !== "function") {
 			return [];
 		}
@@ -493,9 +429,7 @@ export class LinearService {
 		}
 	}
 
-	private async fetchTeam(
-		issue: LinearIssueEntity,
-	): Promise<{ id: string; name: string } | null> {
+	private async fetchTeam(issue: LinearIssueEntity): Promise<{ id: string; name: string } | null> {
 		if (typeof issue.team !== "function") {
 			return null;
 		}
@@ -565,10 +499,7 @@ export class LinearService {
 		return undefined;
 	}
 
-	private extractMessage(
-		error: Record<string, unknown>,
-		fallback: string,
-	): string {
+	private extractMessage(error: Record<string, unknown>, fallback: string): string {
 		if (typeof error.message === "string" && error.message.length > 0) {
 			return error.message;
 		}

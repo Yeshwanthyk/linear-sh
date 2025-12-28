@@ -48,9 +48,7 @@ Side Effects:
 			const program = Effect.gen(function* () {
 				const ctx = yield* CliContext;
 				const issueRef = yield* self.resolveIssueRefEffect();
-				const details = yield* Effect.promise(() =>
-					ctx.service.getIssueDetails(issueRef),
-				);
+				const details = yield* Effect.promise(() => ctx.service.getIssueDetails(issueRef));
 
 				if (self.open && details.url) {
 					yield* Effect.promise(() => openInBrowser(details.url!));
@@ -82,9 +80,7 @@ function formatIssueDetails(details: IssueDetails): string {
 	}
 
 	if (details.labels.length > 0) {
-		lines.push(
-			`Labels: ${details.labels.map((label) => label.name).join(", ")}`,
-		);
+		lines.push(`Labels: ${details.labels.map((label) => label.name).join(", ")}`);
 	}
 
 	if (details.priorityLabel) {

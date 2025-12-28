@@ -1,28 +1,18 @@
 import { Command, Option } from "clipanion";
 import { Effect } from "effect";
 
-import {
-	branchExists,
-	checkoutBranch,
-	createBranch,
-	sanitizeBranchName,
-} from "../../git/branch";
+import { branchExists, checkoutBranch, createBranch, sanitizeBranchName } from "../../git/branch";
 import type { IssueSummary } from "../../linear/client";
 import { CliContext, runCommandEffect } from "../../runtime/effect";
 import type { CommandContext } from "../base-command";
 import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
-import {
-	normalizeOptionString,
-	resolveAssigneeId,
-	resolveStateId,
-} from "./helpers";
+import { normalizeOptionString, resolveAssigneeId, resolveStateId } from "./helpers";
 
 export class IssueStartCommand extends IssueBaseCommand {
 	static paths = [["issue", "start"]];
 
 	static usage = Command.Usage({
-		description:
-			"Start working on an issue: create branch and transition state",
+		description: "Start working on an issue: create branch and transition state",
 		category: ISSUE_USAGE_CATEGORY,
 		details: `
 Kick off active work on an issue by aligning Git and Linear in one step.
@@ -88,17 +78,13 @@ Failure Modes:
 			const program = Effect.gen(function* () {
 				const ctx = yield* CliContext;
 				const issueRef = self.resolveIssueRef(ctx);
-				const details = yield* Effect.promise(() =>
-					ctx.service.getIssue(issueRef),
-				);
+				const details = yield* Effect.promise(() => ctx.service.getIssue(issueRef));
 
 				const branchName = yield* self.handleBranchEffect(details);
 				const updates = yield* self.prepareUpdatesEffect(details, ctx);
 
 				if (updates.stateId || updates.assigneeId) {
-					yield* Effect.promise(() =>
-						ctx.service.updateIssue(details.id, updates),
-					);
+					yield* Effect.promise(() => ctx.service.updateIssue(details.id, updates));
 				}
 
 				if (self.json) {
@@ -110,8 +96,7 @@ Failure Modes:
 					}
 					ctx.output.write(output);
 				} else {
-					const message =
-						self.noBranch === true ? "Issue updated" : "Issue started";
+					const message = self.noBranch === true ? "Issue updated" : "Issue started";
 					const payload: Record<string, string> = {
 						identifier: details.identifier,
 					};
@@ -137,8 +122,7 @@ Failure Modes:
 
 			const branchOverride = normalizeOptionString(self.branch);
 			const branchName =
-				branchOverride ??
-				deriveBranchName(details.identifier, details.branchName, details.title);
+				branchOverride ?? deriveBranchName(details.identifier, details.branchName, details.title);
 
 			yield* Effect.sync(() => {
 				if (!IssueStartCommand.git.branchExists(branchName)) {
@@ -168,8 +152,7 @@ Failure Modes:
 
 			if (self.assign || self.assignee) {
 				const assigneeSource =
-					normalizeOptionString(self.assignee) ??
-					context.config.defaults.assigneeId;
+					normalizeOptionString(self.assignee) ?? context.config.defaults.assigneeId;
 				if (assigneeSource) {
 					const assigneeId = yield* Effect.promise(() =>
 						resolveAssigneeId(context, assigneeSource, targetTeam),
@@ -185,11 +168,7 @@ Failure Modes:
 	}
 }
 
-function deriveBranchName(
-	identifier: string,
-	suggested?: string | null,
-	title?: string,
-): string {
+function deriveBranchName(identifier: string, suggested?: string | null, title?: string): string {
 	if (suggested) {
 		return suggested;
 	}

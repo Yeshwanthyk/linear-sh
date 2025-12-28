@@ -29,16 +29,10 @@ export const LinearError = Data.taggedEnum<LinearError>();
 
 // Type aliases for individual error types
 export type ConfigError = Data.TaggedEnum.Value<LinearError, "ConfigError">;
-export type LinearApiError = Data.TaggedEnum.Value<
-	LinearError,
-	"LinearApiError"
->;
+export type LinearApiError = Data.TaggedEnum.Value<LinearError, "LinearApiError">;
 export type CacheError = Data.TaggedEnum.Value<LinearError, "CacheError">;
 export type GitError = Data.TaggedEnum.Value<LinearError, "GitError">;
-export type ValidationError = Data.TaggedEnum.Value<
-	LinearError,
-	"ValidationError"
->;
+export type ValidationError = Data.TaggedEnum.Value<LinearError, "ValidationError">;
 export type ResolverError = Data.TaggedEnum.Value<LinearError, "ResolverError">;
 
 // -----------------------------------------------------------------------------
@@ -48,11 +42,8 @@ export type ResolverError = Data.TaggedEnum.Value<LinearError, "ResolverError">;
 export const ConfigError = (message: string, path?: string): LinearError =>
 	LinearError.ConfigError({ message, path });
 
-export const LinearApiError = (
-	message: string,
-	status?: number,
-	operation?: string,
-): LinearError => LinearError.LinearApiError({ message, status, operation });
+export const LinearApiError = (message: string, status?: number, operation?: string): LinearError =>
+	LinearError.LinearApiError({ message, status, operation });
 
 export const CacheError = (message: string, path?: string): LinearError =>
 	LinearError.CacheError({ message, path });
@@ -60,39 +51,29 @@ export const CacheError = (message: string, path?: string): LinearError =>
 export const GitError = (message: string, operation?: string): LinearError =>
 	LinearError.GitError({ message, operation });
 
-export const ValidationError = (
-	message: string,
-	field?: string,
-	value?: unknown,
-): LinearError => LinearError.ValidationError({ message, field, value });
+export const ValidationError = (message: string, field?: string, value?: unknown): LinearError =>
+	LinearError.ValidationError({ message, field, value });
 
-export const ResolverError = (
-	message: string,
-	resolverType: string,
-	input?: string,
-): LinearError => LinearError.ResolverError({ message, resolverType, input });
+export const ResolverError = (message: string, resolverType: string, input?: string): LinearError =>
+	LinearError.ResolverError({ message, resolverType, input });
 
 // -----------------------------------------------------------------------------
 // Type guards
 // -----------------------------------------------------------------------------
 
-export const isConfigError = (e: LinearError): e is ConfigError =>
-	e._tag === "ConfigError";
+export const isConfigError = (e: LinearError): e is ConfigError => e._tag === "ConfigError";
 
 export const isLinearApiError = (e: LinearError): e is LinearApiError =>
 	e._tag === "LinearApiError";
 
-export const isCacheError = (e: LinearError): e is CacheError =>
-	e._tag === "CacheError";
+export const isCacheError = (e: LinearError): e is CacheError => e._tag === "CacheError";
 
-export const isGitError = (e: LinearError): e is GitError =>
-	e._tag === "GitError";
+export const isGitError = (e: LinearError): e is GitError => e._tag === "GitError";
 
 export const isValidationError = (e: LinearError): e is ValidationError =>
 	e._tag === "ValidationError";
 
-export const isResolverError = (e: LinearError): e is ResolverError =>
-	e._tag === "ResolverError";
+export const isResolverError = (e: LinearError): e is ResolverError => e._tag === "ResolverError";
 
 // -----------------------------------------------------------------------------
 // Utilities

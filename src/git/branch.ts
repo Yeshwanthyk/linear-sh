@@ -18,37 +18,29 @@ export function getCurrentBranch(options: GitOptions = {}): string {
 		});
 		return result.trim();
 	} catch (error) {
-		throw new GitIntegrationError(
-			`Unable to determine current Git branch: ${String(error)}`,
-		);
+		throw new GitIntegrationError(`Unable to determine current Git branch: ${String(error)}`);
 	}
 }
 
 export function extractIssueKeyFromBranch(branch: string): string | null {
 	const normalized = branch.replace(/\//g, "-");
 	const match = ISSUE_KEY_REGEX.exec(normalized);
-	if (!match) {
+	if (!match || !match[1]) {
 		return null;
 	}
 	return match[1].toUpperCase();
 }
 
-export function inferIssueKeyFromRepository(
-	options: GitOptions = {},
-): string | null {
+export function inferIssueKeyFromRepository(options: GitOptions = {}): string | null {
 	const branch = getCurrentBranch(options);
 	return extractIssueKeyFromBranch(branch);
 }
 
-export function branchExists(
-	branch: string,
-	options: GitOptions = {},
-): boolean {
-	const result = spawnSync(
-		"git",
-		["show-ref", "--verify", "--quiet", `refs/heads/${branch}`],
-		{ cwd: options.cwd, stdio: "ignore" },
-	);
+export function branchExists(branch: string, options: GitOptions = {}): boolean {
+	const result = spawnSync("git", ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`], {
+		cwd: options.cwd,
+		stdio: "ignore",
+	});
 	return result.status === 0;
 }
 

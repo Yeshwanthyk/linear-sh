@@ -32,10 +32,7 @@ export class MetadataCache {
 	constructor(options: MetadataCacheOptions = {}) {
 		const homeDir = options.homeDir ?? os.homedir();
 		this.cacheDir = path.join(homeDir, ".cache", "linear-sh");
-		this.filePath = path.join(
-			this.cacheDir,
-			options.fileName ?? DEFAULT_FILE_NAME,
-		);
+		this.filePath = path.join(this.cacheDir, options.fileName ?? DEFAULT_FILE_NAME);
 		this.ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
 		this.enabled = options.enabled ?? true;
 	}

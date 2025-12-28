@@ -49,11 +49,7 @@ export function createOutput(options: OutputOptions): OutputHandlers {
 			timestamp: new Date().toISOString(),
 		});
 
-	const writeSuccess = (
-		status: "success" | "info" | "warn",
-		message: string,
-		data?: unknown,
-	) => {
+	const writeSuccess = (status: "success" | "info" | "warn", message: string, data?: unknown) => {
 		const useStdout = status === "success" || status === "info";
 		const target = useStdout ? stdout : stderr;
 
@@ -88,8 +84,7 @@ export function createOutput(options: OutputOptions): OutputHandlers {
 
 		const message = error instanceof Error ? error.message : String(error);
 		const codeSuffix = meta?.code ? ` [${meta.code}]` : "";
-		const detailsSuffix =
-			meta?.details !== undefined ? ` ${stringifyData(meta.details)}` : "";
+		const detailsSuffix = meta?.details !== undefined ? ` ${stringifyData(meta.details)}` : "";
 		writeLine(stderr, `Error:${codeSuffix} ${message}${detailsSuffix}`);
 	};
 

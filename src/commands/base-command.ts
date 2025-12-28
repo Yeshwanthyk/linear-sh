@@ -37,9 +37,7 @@ export abstract class BaseCommand extends Command {
 
 	private contextPromise?: Promise<CommandContext>;
 
-	protected async getContext(
-		options: { requireApiKey?: boolean } = {},
-	): Promise<CommandContext> {
+	protected async getContext(options: { requireApiKey?: boolean } = {}): Promise<CommandContext> {
 		if (!this.contextPromise) {
 			this.contextPromise = this.buildContext(options.requireApiKey ?? true);
 		}
@@ -94,8 +92,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected reportError(error: unknown, context?: CommandContext): void {
-		const output =
-			context?.output ?? createOutput({ format: this.json ? "json" : "plain" });
+		const output = context?.output ?? createOutput({ format: this.json ? "json" : "plain" });
 		if (error instanceof ConfigError) {
 			output.error(error, { code: "CONFIG_ERROR" });
 			return;

@@ -41,11 +41,8 @@ export class CompactHelpCommand extends Command {
 			return a.localeCompare(b);
 		});
 
-		const headerLabel =
-			this.cli.binaryLabel ?? this.cli.binaryName ?? "linear-sh";
-		const headerVersion = this.cli.binaryVersion
-			? ` ${this.cli.binaryVersion}`
-			: "";
+		const headerLabel = this.cli.binaryLabel ?? this.cli.binaryName ?? "linear-sh";
+		const headerVersion = this.cli.binaryVersion ? ` ${this.cli.binaryVersion}` : "";
 		const header = `${headerLabel}${headerVersion}`;
 		const lines: string[] = [];
 
@@ -72,14 +69,10 @@ export class CompactHelpCommand extends Command {
 
 		lines.push("");
 		lines.push("Options:");
-		lines.push(
-			"  --help-verbose  Show detailed help with all options and examples",
-		);
+		lines.push("  --help-verbose  Show detailed help with all options and examples");
 		lines.push("  --version       Show version number");
 		lines.push("");
-		lines.push(
-			"Run 'linear-sh --help-verbose' for detailed command information.",
-		);
+		lines.push("Run 'linear-sh --help-verbose' for detailed command information.");
 
 		this.context.stdout.write(`${lines.join("\n")}`);
 		return 0;
@@ -109,11 +102,8 @@ export class DetailedHelpCommand extends Command {
 			return a.localeCompare(b);
 		});
 
-		const headerLabel =
-			this.cli.binaryLabel ?? this.cli.binaryName ?? "linear-sh";
-		const headerVersion = this.cli.binaryVersion
-			? ` ${this.cli.binaryVersion}`
-			: "";
+		const headerLabel = this.cli.binaryLabel ?? this.cli.binaryName ?? "linear-sh";
+		const headerVersion = this.cli.binaryVersion ? ` ${this.cli.binaryVersion}` : "";
 		const header = `${headerLabel}${headerVersion}`;
 		const lines: string[] = [];
 
@@ -140,9 +130,7 @@ export class DetailedHelpCommand extends Command {
 					for (const option of command.options) {
 						const definition = option.definition.trim();
 						const description = option.description.replace(/\s+/g, " ").trim();
-						lines.push(
-							`    ${definition}${description ? `  ${description}` : ""}`,
-						);
+						lines.push(`    ${definition}${description ? `  ${description}` : ""}`);
 					}
 				}
 
@@ -164,9 +152,7 @@ export class DetailedHelpCommand extends Command {
 					lines.push("  Examples:");
 					for (const [label, example] of command.examples) {
 						const labelText = label.replace(/\s+/g, " ").trim();
-						const resolvedExample = example
-							.replace(/\$0/g, this.cli.binaryName)
-							.trim();
+						const resolvedExample = example.replace(/\$0/g, this.cli.binaryName).trim();
 						lines.push(`    - ${labelText}: ${resolvedExample}`);
 					}
 				}

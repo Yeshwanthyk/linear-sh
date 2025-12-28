@@ -24,13 +24,9 @@ async function runRelease(options: ReleaseOptions) {
 	console.log(chalk.cyan("→ Linting"));
 	await $`bun run lint`;
 
-	const publishCommand = options.dryRun
-		? $`bun publish --dry-run`
-		: $`bun publish`;
+	const publishCommand = options.dryRun ? $`bun publish --dry-run` : $`bun publish`;
 
-	console.log(
-		chalk.cyan(`→ Publishing (${options.dryRun ? "dry run" : "live"})`),
-	);
+	console.log(chalk.cyan(`→ Publishing (${options.dryRun ? "dry run" : "live"})`));
 	await publishCommand;
 
 	console.log(chalk.green("Release workflow complete."));

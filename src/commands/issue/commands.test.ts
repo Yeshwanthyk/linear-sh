@@ -49,6 +49,7 @@ describe("IssueListCommand", () => {
 				stateId: "state-1",
 				assigneeId: "user-1",
 				teamId: "team-1",
+				projectId: null,
 				labelIds: [],
 				priorityLabel: null,
 				updatedAt: null,
@@ -60,13 +61,9 @@ describe("IssueListCommand", () => {
 			service: {
 				listIssues: () => Promise.resolve(issues),
 				getWorkflowStates: () =>
-					Promise.resolve([
-						{ id: "state-1", name: "In Progress", teamId: "team-1" },
-					]),
+					Promise.resolve([{ id: "state-1", name: "In Progress", teamId: "team-1" }]),
 				getUsers: () =>
-					Promise.resolve([
-						{ id: "user-1", name: "Alice", email: "alice@example.com" },
-					]),
+					Promise.resolve([{ id: "user-1", name: "Alice", email: "alice@example.com" }]),
 			},
 		});
 
@@ -76,12 +73,14 @@ describe("IssueListCommand", () => {
 
 		const result = await command.execute();
 		expect(result).toBe(0);
-		expect(JSON.parse(writes[0]).issues[0].identifier).toBe("ENG-1");
+		const output = writes[0];
+		expect(output).toBeDefined();
+		expect(JSON.parse(output!).issues[0].identifier).toBe("ENG-1");
 	});
 
 	test("uses config default team when no --team flag provided", async () => {
 		const callsToListIssues: unknown[] = [];
-		const { context, writes } = createTestContext({
+		const { context } = createTestContext({
 			config: {
 				defaults: {
 					teamId: "config-team-1",
@@ -103,14 +102,12 @@ describe("IssueListCommand", () => {
 
 		const result = await command.execute();
 		expect(result).toBe(0);
-		expect(
-			(callsToListIssues[0] as { teamId: string | undefined }).teamId,
-		).toBe("config-team-1");
+		expect((callsToListIssues[0] as { teamId: string | undefined }).teamId).toBe("config-team-1");
 	});
 
 	test("uses config default state when no --state flag provided", async () => {
 		const callsToListIssues: unknown[] = [];
-		const { context, writes } = createTestContext({
+		const { context } = createTestContext({
 			config: {
 				defaults: {
 					teamId: "config-team-1",
@@ -133,14 +130,14 @@ describe("IssueListCommand", () => {
 
 		const result = await command.execute();
 		expect(result).toBe(0);
-		expect(
-			(callsToListIssues[0] as { stateId: string | undefined }).stateId,
-		).toBe("config-state-1");
+		expect((callsToListIssues[0] as { stateId: string | undefined }).stateId).toBe(
+			"config-state-1",
+		);
 	});
 
 	test("overrides config default team when --team flag provided", async () => {
 		const callsToListIssues: unknown[] = [];
-		const { context, writes } = createTestContext({
+		const { context } = createTestContext({
 			config: {
 				defaults: {
 					teamId: "config-team-1",
@@ -163,9 +160,7 @@ describe("IssueListCommand", () => {
 
 		const result = await command.execute();
 		expect(result).toBe(0);
-		expect(
-			(callsToListIssues[0] as { teamId: string | undefined }).teamId,
-		).toBe("explicit-team-1");
+		expect((callsToListIssues[0] as { teamId: string | undefined }).teamId).toBe("explicit-team-1");
 	});
 
 	test("surfaces list failures", async () => {
@@ -180,9 +175,7 @@ describe("IssueListCommand", () => {
 
 		const result = await command.execute();
 		expect(result).toBe(1);
-		expect(writes[writes.length - 1]).toContain(
-			"ERROR:LinearApiError: List boom",
-		);
+		expect(writes[writes.length - 1]).toContain("ERROR:LinearApiError: List boom");
 	});
 });
 
@@ -216,8 +209,7 @@ describe("Mutation commands", () => {
 	test("IssueCreateCommand surfaces service failures", async () => {
 		const { context, writes } = createTestContext({
 			service: {
-				createIssue: () =>
-					Promise.reject(new LinearApiError("Linear explosion", 500)),
+				createIssue: () => Promise.reject(new LinearApiError("Linear explosion", 500)),
 			},
 			config: {
 				defaults: {
@@ -233,9 +225,7 @@ describe("Mutation commands", () => {
 
 		const result = await command.execute();
 		expect(result).toBe(1);
-		expect(writes[writes.length - 1]).toContain(
-			"ERROR:LinearApiError: Linear explosion",
-		);
+		expect(writes[writes.length - 1]).toContain("ERROR:LinearApiError: Linear explosion");
 	});
 
 	test("IssueUpdateCommand resolves fields", async () => {
@@ -249,13 +239,9 @@ describe("Mutation commands", () => {
 				},
 				createComment: () => Promise.resolve("comment-1"),
 				getWorkflowStates: () =>
-					Promise.resolve([
-						{ id: "state-1", name: "In Progress", teamId: "team-1" },
-					]),
+					Promise.resolve([{ id: "state-1", name: "In Progress", teamId: "team-1" }]),
 				getUsers: () =>
-					Promise.resolve([
-						{ id: "user-1", name: "Alice", email: "alice@example.com" },
-					]),
+					Promise.resolve([{ id: "user-1", name: "Alice", email: "alice@example.com" }]),
 			},
 		});
 
@@ -280,13 +266,9 @@ describe("Mutation commands", () => {
 					return Promise.resolve(createIssueSummary());
 				},
 				getWorkflowStates: () =>
-					Promise.resolve([
-						{ id: "state-1", name: "In Progress", teamId: "team-1" },
-					]),
+					Promise.resolve([{ id: "state-1", name: "In Progress", teamId: "team-1" }]),
 				getUsers: () =>
-					Promise.resolve([
-						{ id: "user-1", name: "Alice", email: "alice@example.com" },
-					]),
+					Promise.resolve([{ id: "user-1", name: "Alice", email: "alice@example.com" }]),
 			},
 		});
 
@@ -346,9 +328,7 @@ describe("Mutation commands", () => {
 		const originalRunGh = IssuePrCommand.runGh;
 		IssuePrCommand.runGh = (args) => {
 			invocations.push(args);
-			return { status: 0 } as unknown as ReturnType<
-				typeof IssuePrCommand.runGh
-			>;
+			return { status: 0 } as unknown as ReturnType<typeof IssuePrCommand.runGh>;
 		};
 
 		const { context } = createTestContext({
@@ -363,7 +343,7 @@ describe("Mutation commands", () => {
 
 		const result = await command.execute();
 		expect(result).toBe(0);
-		expect(invocations[0][0]).toBe("pr");
+		expect(invocations[0]?.[0]).toBe("pr");
 
 		IssuePrCommand.runGh = originalRunGh;
 	});
@@ -425,9 +405,7 @@ function createTestContext(
 	const output = {
 		format: "plain" as const,
 		write: (payload: unknown) => {
-			writes.push(
-				typeof payload === "string" ? payload : JSON.stringify(payload),
-			);
+			writes.push(typeof payload === "string" ? payload : JSON.stringify(payload));
 		},
 		success: (_message: string, data?: unknown) => {
 			writes.push(JSON.stringify(data ?? {}));
@@ -483,9 +461,7 @@ function createTestContext(
 	return { context, writes };
 }
 
-function createIssueSummary(
-	overrides: Partial<IssueSummary> = {},
-): IssueSummary {
+function createIssueSummary(overrides: Partial<IssueSummary> = {}): IssueSummary {
 	return {
 		id: "issue-1",
 		identifier: "ENG-1",
@@ -496,6 +472,7 @@ function createIssueSummary(
 		stateId: "state-1",
 		assigneeId: "user-1",
 		teamId: "team-1",
+		projectId: null,
 		labelIds: [],
 		priorityLabel: "High",
 		updatedAt: null,
@@ -504,9 +481,7 @@ function createIssueSummary(
 	};
 }
 
-function createIssueDetails(
-	overrides: Partial<IssueDetails> = {},
-): IssueDetails {
+function createIssueDetails(overrides: Partial<IssueDetails> = {}): IssueDetails {
 	return {
 		...createIssueSummary(overrides),
 		labels: [],

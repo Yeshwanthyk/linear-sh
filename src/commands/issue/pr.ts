@@ -9,8 +9,7 @@ export class IssuePrCommand extends IssueBaseCommand {
 	static paths = [["issue", "pr"]];
 
 	static usage = Command.Usage({
-		description:
-			"Create a GitHub pull request seeded with Linear issue context",
+		description: "Create a GitHub pull request seeded with Linear issue context",
 		category: ISSUE_USAGE_CATEGORY,
 		details: `
 Use after preparing a branch to open a GitHub pull request that references the matching Linear issue.
@@ -41,8 +40,7 @@ Failure Modes:
 `,
 	});
 
-	static runGh = (args: string[]) =>
-		spawnSync("gh", args, { stdio: "inherit" });
+	static runGh = (args: string[]) => spawnSync("gh", args, { stdio: "inherit" });
 
 	draft = Option.Boolean("--draft", false, {
 		description: "Open PR as draft",
@@ -54,28 +52,16 @@ Failure Modes:
 			const program = Effect.gen(function* () {
 				const ctx = yield* CliContext;
 				const issueRef = yield* self.resolveIssueRefEffect();
-				const issue = yield* Effect.promise(() =>
-					ctx.service.getIssueDetails(issueRef),
-				);
+				const issue = yield* Effect.promise(() => ctx.service.getIssueDetails(issueRef));
 
 				if (!issue.url) {
-					return yield* Effect.fail(
-						new Error("Issue does not have a URL to include in PR body"),
-					);
+					return yield* Effect.fail(new Error("Issue does not have a URL to include in PR body"));
 				}
 
 				const title = `[${issue.identifier}] ${issue.title}`;
 				const body = `${issue.title}\n\n${issue.url}`;
 
-				const args = [
-					"pr",
-					"create",
-					"--fill",
-					"--title",
-					title,
-					"--body",
-					body,
-				];
+				const args = ["pr", "create", "--fill", "--title", title, "--body", body];
 				if (self.draft) {
 					args.push("--draft");
 				}

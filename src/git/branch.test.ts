@@ -4,9 +4,7 @@ import { extractIssueKeyFromBranch, sanitizeBranchName } from "./branch";
 
 describe("branch utilities", () => {
 	test("extractIssueKeyFromBranch finds identifier", () => {
-		expect(extractIssueKeyFromBranch("feature/eng-1234-linear-cli")).toBe(
-			"ENG-1234",
-		);
+		expect(extractIssueKeyFromBranch("feature/eng-1234-linear-cli")).toBe("ENG-1234");
 		expect(extractIssueKeyFromBranch("fix/ENG-99")).toBe("ENG-99");
 		expect(extractIssueKeyFromBranch("no-key")).toBeNull();
 	});

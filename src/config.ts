@@ -52,15 +52,9 @@ function isOutputFormat(value: unknown): value is OutputFormat {
 }
 
 export const REPO_CONFIG_FILENAME = ".linearrc.json";
-export const USER_CONFIG_RELATIVE_PATH = path.join(
-	".config",
-	"linear-sh",
-	"config.json",
-);
+export const USER_CONFIG_RELATIVE_PATH = path.join(".config", "linear-sh", "config.json");
 
-export function loadLinearConfig(
-	options: LoadConfigOptions = {},
-): LinearConfig {
+export function loadLinearConfig(options: LoadConfigOptions = {}): LinearConfig {
 	const cwd = options.cwd ?? process.cwd();
 	const env = options.env ?? process.env;
 	const homeDir = options.homeDir ?? os.homedir();
@@ -71,12 +65,7 @@ export function loadLinearConfig(
 	const { config: repoConfig, filePath: repoPath } = readRepoConfig(cwd);
 	const envConfig = configFromEnv(env);
 
-	const merged = mergeConfigs(
-		DEFAULT_CONFIG,
-		userConfig,
-		repoConfig,
-		envConfig,
-	);
+	const merged = mergeConfigs(DEFAULT_CONFIG, userConfig, repoConfig, envConfig);
 	merged.paths = { userFile: userPath, repoFile: repoPath };
 
 	if (!merged.apiKey && options.requireApiKey !== false) {
@@ -91,9 +80,7 @@ export function loadLinearConfig(
 	return merged;
 }
 
-function mergeConfigs(
-	...configs: Array<PartialConfig | undefined>
-): LinearConfig {
+function mergeConfigs(...configs: Array<PartialConfig | undefined>): LinearConfig {
 	return configs.reduce<LinearConfig>(
 		(acc, current) => {
 			if (!current) {
@@ -168,9 +155,7 @@ function readConfigFile(filePath: string): {
 		const parsed = JSON.parse(content) as PartialConfig;
 		return { config: normaliseParsedConfig(parsed), filePath };
 	} catch (error) {
-		throw new ConfigError(
-			`Failed to parse configuration file at ${filePath}: ${String(error)}`,
-		);
+		throw new ConfigError(`Failed to parse configuration file at ${filePath}: ${String(error)}`);
 	}
 }
 

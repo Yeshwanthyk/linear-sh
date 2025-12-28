@@ -20,9 +20,7 @@ export async function resolveStateId(
 	}
 
 	const normalised = input.toLowerCase();
-	const byName = states.find(
-		(state) => state.name.toLowerCase() === normalised,
-	);
+	const byName = states.find((state) => state.name.toLowerCase() === normalised);
 	if (byName) {
 		return byName.id;
 	}
@@ -69,9 +67,7 @@ export function normalizeOptionString(value: unknown): string | undefined {
 	return trimmed.length > 0 ? trimmed : undefined;
 }
 
-export function normalizeOptionStringArray(
-	value: unknown,
-): string[] | undefined {
+export function normalizeOptionStringArray(value: unknown): string[] | undefined {
 	if (!Array.isArray(value)) {
 		return undefined;
 	}

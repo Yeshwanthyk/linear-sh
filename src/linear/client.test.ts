@@ -12,9 +12,7 @@ import {
 } from "./client";
 
 interface MockIssue {
-	labels?: (
-		variables?: Record<string, unknown>,
-	) => Promise<{ nodes: IssueLabelSummary[] }>;
+	labels?: (variables?: Record<string, unknown>) => Promise<{ nodes: IssueLabelSummary[] }>;
 	team?: () => Promise<{ id: string; name: string } | null>;
 	id: string;
 	identifier: string;
@@ -75,12 +73,9 @@ class MockLinearClient {
 
 	issues(variables: Record<string, unknown>) {
 		this.issueFilterCalls.push({
-			teamId: (variables.filter as { team?: { id?: { eq?: string } } })?.team
-				?.id?.eq,
-			stateId: (variables.filter as { state?: { id?: { eq?: string } } })?.state
-				?.id?.eq,
-			assigneeId: (variables.filter as { assignee?: { id?: { eq?: string } } })
-				?.assignee?.id?.eq,
+			teamId: (variables.filter as { team?: { id?: { eq?: string } } })?.team?.id?.eq,
+			stateId: (variables.filter as { state?: { id?: { eq?: string } } })?.state?.id?.eq,
+			assigneeId: (variables.filter as { assignee?: { id?: { eq?: string } } })?.assignee?.id?.eq,
 			limit: variables.first as number | undefined,
 		});
 		const next = this.issuesQueue.shift() ?? { nodes: [] };
@@ -134,8 +129,8 @@ class MockLinearClient {
 		// Handle GraphQL mutations based on the document type
 		// Check the document object for mutation name
 		const docName =
-			(document as { definitions?: Array<{ name?: { value?: string } }> })
-				?.definitions?.[0]?.name?.value ?? "";
+			(document as { definitions?: Array<{ name?: { value?: string } }> })?.definitions?.[0]?.name
+				?.value ?? "";
 
 		const input = variables.input as Record<string, unknown> | undefined;
 
@@ -197,9 +192,7 @@ function createMockIssue(overrides: Partial<MockIssue> = {}): MockIssue {
 	};
 }
 
-function createService(
-	overrides: Partial<{ cache: MetadataCache | null }> = {},
-) {
+function createService(overrides: Partial<{ cache: MetadataCache | null }> = {}) {
 	const client = new MockLinearClient();
 	const service = new LinearService({
 		config: {
@@ -245,8 +238,7 @@ describe("LinearService", () => {
 			Promise.resolve({
 				nodes: [{ id: "label-1", name: "Bug", color: "#ff0000" }],
 			});
-		mockIssue.team = () =>
-			Promise.resolve({ id: "team-1", name: "Engineering" });
+		mockIssue.team = () => Promise.resolve({ id: "team-1", name: "Engineering" });
 		client.issueResponses.set(MOCK_ISSUE_ID, mockIssue);
 		client.workflowStatesQueue.push({
 			nodes: [{ id: "state-1", name: "In Progress", team: { id: "team-1" } }],
@@ -322,8 +314,6 @@ describe("LinearService", () => {
 		const { service, client } = createService();
 		client.searchQueue.push({ nodes: [] });
 
-		return expect(service.getIssue("unknown")).rejects.toBeInstanceOf(
-			LinearApiError,
-		);
+		return expect(service.getIssue("unknown")).rejects.toBeInstanceOf(LinearApiError);
 	});
 });

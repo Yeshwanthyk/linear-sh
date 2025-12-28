@@ -6,11 +6,7 @@ import { CliContext, runCommandEffect } from "../../runtime/effect";
 import type { CommandContext } from "../base-command";
 import { BaseCommand } from "../base-command";
 import { ISSUE_USAGE_CATEGORY } from "./base";
-import {
-	normalizeOptionString,
-	resolveAssigneeId,
-	resolveStateId,
-} from "./helpers";
+import { normalizeOptionString, resolveAssigneeId, resolveStateId } from "./helpers";
 
 export class IssueListCommand extends BaseCommand {
 	static paths = [["issue", "list"]];
@@ -77,14 +73,11 @@ Failure Modes:
 			const program = Effect.gen(function* () {
 				const ctx = yield* CliContext;
 
-				const teamFilter =
-					normalizeOptionString(self.team) ?? ctx.config.defaults.teamId;
+				const teamFilter = normalizeOptionString(self.team) ?? ctx.config.defaults.teamId;
 				const stateFilter =
-					normalizeOptionString(self.state) ??
-					ctx.config.defaults.workflowStateId;
+					normalizeOptionString(self.state) ?? ctx.config.defaults.workflowStateId;
 				const assigneeFilter = normalizeOptionString(self.assignee);
-				const projectFilter =
-					normalizeOptionString(self.project) ?? ctx.config.defaults.projectId;
+				const projectFilter = normalizeOptionString(self.project) ?? ctx.config.defaults.projectId;
 				const limitValue = normalizeOptionString(self.limit);
 				const limit = limitValue ? Number.parseInt(limitValue, 10) : undefined;
 
@@ -110,9 +103,7 @@ Failure Modes:
 					return 0;
 				}
 
-				const summary = yield* Effect.promise(() =>
-					self.enrichIssues(ctx, issues),
-				);
+				const summary = yield* Effect.promise(() => self.enrichIssues(ctx, issues));
 				ctx.output.write(formatIssueTable(summary));
 				return 0;
 			});
@@ -131,12 +122,8 @@ Failure Modes:
 		return issues.map((issue) => ({
 			identifier: issue.identifier,
 			title: issue.title,
-			state: issue.stateId
-				? (stateMap.get(issue.stateId) ?? issue.stateId)
-				: "",
-			assignee: issue.assigneeId
-				? (userMap.get(issue.assigneeId) ?? issue.assigneeId)
-				: "",
+			state: issue.stateId ? (stateMap.get(issue.stateId) ?? issue.stateId) : "",
+			assignee: issue.assigneeId ? (userMap.get(issue.assigneeId) ?? issue.assigneeId) : "",
 			updatedAt: issue.updatedAt,
 		}));
 	}
@@ -156,19 +143,14 @@ function formatIssueTable(rows: IssueListView[]): string {
 	}
 
 	const headers = ["Key", "State", "Assignee", "Title"];
-	const data = rows.map((row) => [
-		row.identifier,
-		row.state ?? "",
-		row.assignee ?? "",
-		row.title,
-	]);
+	const data = rows.map((row) => [row.identifier, row.state ?? "", row.assignee ?? "", row.title]);
 
 	const widths = headers.map((header, index) =>
 		Math.max(header.length, ...data.map((row) => row[index]?.length ?? 0)),
 	);
 
 	const formatRow = (row: string[]) =>
-		row.map((value, index) => value.padEnd(widths[index])).join("  ");
+		row.map((value, index) => value.padEnd(widths[index] ?? 0)).join("  ");
 
 	const separator = widths.map((width) => "-".repeat(width));
 	const lines = [formatRow(headers), formatRow(separator)];
