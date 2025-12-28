@@ -1,13 +1,23 @@
 import { Command, Option } from "clipanion";
+import { Effect } from "effect";
 
 import { ConfigError, type LinearConfig, loadLinearConfig } from "../config";
 import { MetadataCache } from "../linear/cache";
 import { LinearService } from "../linear/client";
+import { type AppLayerOptions, runCommandExit } from "../runtime/cli";
+import type {
+	CacheService,
+	ConfigService,
+	GitService,
+	LoggerService,
+	OutputService,
+} from "../services";
 import type { Logger } from "../utils/logger";
 import { createLogger } from "../utils/logger";
 import type { OutputHandlers } from "../utils/output";
 import { createOutput } from "../utils/output";
 
+// Legacy context for backward compatibility
 export interface CommandContext {
 	readonly config: LinearConfig;
 	readonly output: OutputHandlers;
@@ -20,8 +30,12 @@ type ContextFactory = (
 	options: { requireApiKey: boolean },
 ) => Promise<CommandContext>;
 
+// Effect services type for new commands
+export type AppServices = ConfigService | CacheService | GitService | LoggerService | OutputService;
+
 export abstract class BaseCommand extends Command {
-	static setContextFactory(factory?: ContextFactory) {
+	// Legacy: Context factory for testing
+	static setContextFactory(factory?: ContextFactory): void {
 		BaseCommand.contextFactory = factory;
 	}
 
@@ -35,7 +49,47 @@ export abstract class BaseCommand extends Command {
 		description: "Disable metadata caching for this invocation",
 	});
 
+	profile = Option.String("--profile", {
+		description: "Use a specific profile",
+		required: false,
+	});
+
 	private contextPromise?: Promise<CommandContext>;
+
+	// -------------------------------------------------------------------------
+	// New Effect-based API
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Build layer options from command flags.
+	 */
+	protected getLayerOptions(): AppLayerOptions {
+		return {
+			profileOverride: this.profile,
+			outputFormat: this.json ? "json" : undefined,
+			noCache: this.noCache,
+			requireApiKey: true,
+		};
+	}
+
+	/**
+	 * Run an Effect program with full app layer.
+	 */
+	protected run<E>(
+		program: Effect.Effect<number, E, AppServices>,
+		options?: Partial<AppLayerOptions>,
+	): Promise<number> {
+		const layerOptions = { ...this.getLayerOptions(), ...options };
+
+		return runCommandExit(program, {
+			...layerOptions,
+			onError: (error) => this.reportError(error),
+		});
+	}
+
+	// -------------------------------------------------------------------------
+	// Legacy API (for backward compatibility during migration)
+	// -------------------------------------------------------------------------
 
 	protected async getContext(options: { requireApiKey?: boolean } = {}): Promise<CommandContext> {
 		if (!this.contextPromise) {

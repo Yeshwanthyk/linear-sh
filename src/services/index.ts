@@ -37,6 +37,7 @@ export {
 	OutputService,
 	OutputServiceLive,
 	makeOutputServiceLive,
+	type OutputServiceOptions,
 	write,
 	success,
 	info,
