@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 
-import type { LinearError } from "../../errors";
+import { ResolverError, type LinearError } from "../../errors";
 import { getWorkflowStates, getUsers, type LinearClientService } from "../../services";
 
 // -----------------------------------------------------------------------------
@@ -28,7 +28,15 @@ export function resolveStateIdEffect(
 			return byName.id;
 		}
 
-		return input;
+		// No match found - fail with a descriptive error
+		const availableStates = states.map((s) => s.name).join(", ");
+		return yield* Effect.fail(
+			ResolverError(
+				`Unknown workflow state "${input}". Available: ${availableStates}`,
+				"workflowState",
+				input,
+			),
+		);
 	});
 }
 
@@ -56,7 +64,11 @@ export function resolveAssigneeIdEffect(
 			return match.id;
 		}
 
-		return input;
+		// No match found - fail with a descriptive error
+		const availableUsers = users.map((u) => u.name).join(", ");
+		return yield* Effect.fail(
+			ResolverError(`Unknown assignee "${input}". Available: ${availableUsers}`, "assignee", input),
+		);
 	});
 }
 
