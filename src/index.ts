@@ -19,6 +19,9 @@ import { ProfileListCommand } from "./commands/profile/list";
 import { ProfileRemoveCommand } from "./commands/profile/remove";
 import { ProfileShowCommand } from "./commands/profile/show";
 import { ProfileUseCommand } from "./commands/profile/use";
+import { StateListCommand } from "./commands/state/list";
+import { TeamListCommand } from "./commands/team/list";
+import { UserListCommand } from "./commands/user/list";
 import { getConfig, success, warn } from "./services";
 
 class RootCommand extends BaseCommand {
@@ -91,6 +94,10 @@ const commandClasses = [
 	ProfileRemoveCommand,
 	ProfileShowCommand,
 	ProfileUseCommand,
+	// Discovery commands
+	TeamListCommand,
+	StateListCommand,
+	UserListCommand,
 ];
 
 for (const commandClass of commandClasses) {
