@@ -1,6 +1,7 @@
 import { Command, Option } from "clipanion";
 import { Effect } from "effect";
 import enquirer from "enquirer";
+import * as tty from "node:tty";
 
 import { ValidationError } from "../../errors";
 import { createIssue, getDefaults, success, write } from "../../services";
@@ -12,10 +13,14 @@ import {
 	resolveAssigneeIdEffect,
 } from "./helpers";
 
-export class IssueCreateCommand extends BaseCommand {
-	static paths = [["issue", "create"]];
+function isInteractive(): boolean {
+	return tty.isatty(0) && tty.isatty(1);
+}
 
-	static usage = Command.Usage({
+export class IssueCreateCommand extends BaseCommand {
+	static override paths = [["issue", "create"]];
+
+	static override usage = Command.Usage({
 		description: "Create a new Linear issue",
 		category: ISSUE_USAGE_CATEGORY,
 		details: `
@@ -112,6 +117,14 @@ Failure Modes:
 			};
 
 			if (!title || !description) {
+				if (!isInteractive()) {
+					return yield* Effect.fail(
+						ValidationError(
+							"Cannot prompt for input in non-interactive mode. Provide --title and --description flags.",
+							"title",
+						),
+					);
+				}
 				const responses = yield* Effect.promise(() =>
 					enquirerModule.prompt<{ title: string; description: string }>([
 						{
