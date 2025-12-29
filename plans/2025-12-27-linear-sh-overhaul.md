@@ -1,5 +1,9 @@
 # Linear-sh Comprehensive Overhaul
 
+## Status: COMPLETE ✅
+
+All phases completed on 2024-12-28.
+
 ## Overview
 
 Complete modernization of linear-sh covering:
@@ -1226,7 +1230,7 @@ bun run typecheck        # Zero errors
 
 ---
 
-# Phase 5: Command Migration
+# Phase 5: Command Migration ✅
 
 ## Overview
 
@@ -1408,7 +1412,7 @@ linear-sh issue list     # Works
 
 ---
 
-# Phase 6: Profile Commands
+# Phase 6: Profile Commands ✅
 
 ## Overview
 
@@ -1773,7 +1777,7 @@ linear-sh profile list --json  # Works
 
 ---
 
-# Phase 7: Discovery Commands
+# Phase 7: Discovery Commands ✅
 
 ## Overview
 
@@ -1957,7 +1961,7 @@ linear-sh team list --json   # JSON output
 
 ---
 
-# Phase 8: Test Infrastructure
+# Phase 8: Test Infrastructure ✅
 
 ## Overview
 
@@ -2185,7 +2189,7 @@ ALLOW_TEST_NETWORK=1 bun test   # Integration tests (manual)
 
 ---
 
-# Phase 9: Cleanup & Documentation
+# Phase 9: Cleanup & Documentation ✅
 
 ## Overview
 
@@ -2290,101 +2294,3 @@ Mark with `describe.skip` by default, run with `ALLOW_TEST_NETWORK=1`:
 - Effect docs: https://effect.website
 - oxlint rules: `npx oxlint --rules`
 - Linear SDK: https://developers.linear.app/docs/sdk
-
-# Linear-sh Comprehensive Overhaul
-
-## Overview
-
-Complete modernization of linear-sh covering:
-
-- **Linting**: Switch to oxlint + oxfmt, stricter TypeScript
-- **Effect Migration**: Full Effect-first architecture
-- **Multi-org/Profiles**: Profile support with org namespacing
-- **Discovery Commands**: team/state/user list, config show
-- **Testing**: Deep test infrastructure with mocks
-- **Cleanup**: Remove old code, update docs
-
-## Current State
-
-### Architecture
-
-```
-src/
-├── commands/           # Clipanion commands (mixed old/new patterns)
-│   ├── base-command.ts # Uses old LinearService class
-│   └── issue/          # Commands use context.service (Promise-based)
-├── config.ts           # Loads config, no profile support
-├── errors/             # Effect TaggedEnum errors ✓
-├── linear/             # OLD: LinearService class (deprecated)
-├── services/           # NEW: Effect layers ✓
-│   ├── cache.ts        # CacheService layer
-│   ├── config.ts       # ConfigService layer
-│   ├── git.ts          # GitService layer
-│   ├── linear-client.ts # LinearClientService layer
-│   ├── linear.ts       # LinearService layer
-│   └── output.ts       # OutputService layer
-├── runtime/effect.ts   # CliContext bridge (hacky)
-└── utils/              # Standalone utilities
-```
-
-### Key Discoveries
-
-1. **Commands use old pattern**: `BaseCommand.buildContext()` creates class-based `LinearService`
-2. **Effect partially integrated**: `runCommandEffect()` bridges old context to Effect
-3. **No profile support**: Config has single `apiKey`, `defaults` - no named profiles
-4. **Cache not org-namespaced**: `~/.cache/linear-sh/metadata-cache.json` shared across orgs
-5. **Tests use mock layers**: Good pattern in `git.test.ts`, `linear.test.ts`
-
-### Files to Delete After Migration
-
-- `src/linear/client.ts` (old LinearService class)
-- `src/linear/cache.ts` (old MetadataCache class)
-- `src/linear/types.ts` (duplicated in services)
-- `src/git/branch.ts` (replaced by GitService)
-- `src/utils/logger.ts` (replaced by LoggerService)
-- `src/utils/output.ts` (replaced by OutputService)
-
-## Desired End State
-
-```
-src/
-├── commands/
-│   ├── base-command.ts     # Effect-native, provides layers
-│   ├── issue/              # All Effect-based
-│   └── profile/            # NEW: profile add/use/list/remove/show
-├── config/
-│   ├── schema.ts           # Config types with profiles
-│   ├── loader.ts           # Load/merge config
-│   └── profile.ts          # Profile management
-├── errors/                 # Same
-├── services/               # All services
-│   ├── index.ts            # Exports + AppLayer composition
-│   └── ...                 # Individual services
-└── test/
-    ├── preload.ts          # Network blocking
-    ├── mocks/              # Mock factories
-    │   ├── linear.ts
-    │   ├── cache.ts
-    │   └── git.ts
-    └── layers.ts           # Test layer composition
-```
-
-### Verification
-
-```bash
-bun run check           # typecheck + lint + test
-linear-sh profile list  # Shows profiles
-linear-sh profile use work && linear-sh issue list  # Works
-bun test                # All pass, no network calls
-```
-
-## Out of Scope
-
-- OAuth/SSO authentication flows
-- Multiple simultaneous orgs in one command
-- Syncing profiles across machines
-- GraphQL schema introspection
-- Plugin system
-
----
-
