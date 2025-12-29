@@ -14,9 +14,9 @@ import { ISSUE_USAGE_CATEGORY } from "./base";
 import { normalizeOptionString, resolveAssigneeIdEffect, resolveStateIdEffect } from "./helpers";
 
 export class IssueListCommand extends BaseCommand {
-	static paths = [["issue", "list"]];
+	static override paths = [["issue", "list"]];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "List Linear issues",
 		category: ISSUE_USAGE_CATEGORY,
 		details: `
@@ -84,7 +84,9 @@ Failure Modes:
 				const assigneeFilter = normalizeOptionString(self.assignee);
 				const projectFilter = normalizeOptionString(self.project) ?? defaults.projectId;
 				const limitValue = normalizeOptionString(self.limit);
-				const limit = limitValue ? Number.parseInt(limitValue, 10) : undefined;
+				const parsedLimit = limitValue ? Number.parseInt(limitValue, 10) : undefined;
+				const limit =
+					parsedLimit !== undefined && !Number.isNaN(parsedLimit) ? parsedLimit : undefined;
 
 				const resolvedStateId = yield* resolveStateIdEffect(stateFilter, teamFilter);
 				const resolvedAssigneeId = yield* resolveAssigneeIdEffect(assigneeFilter, teamFilter);
