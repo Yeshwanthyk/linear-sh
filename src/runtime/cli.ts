@@ -75,18 +75,64 @@ export function makeAppLayer(options: AppLayerOptions = {}) {
 // Error Conversion
 // -----------------------------------------------------------------------------
 
-function toError(cause: unknown): Error {
-	if (cause instanceof Error) {
-		return cause;
+interface LinearErrorShape {
+	readonly _tag: string;
+	readonly message: string;
+}
+
+function isLinearError(cause: unknown): cause is LinearErrorShape {
+	return (
+		typeof cause === "object" &&
+		cause !== null &&
+		"_tag" in cause &&
+		"message" in cause &&
+		typeof (cause as Record<string, unknown>)._tag === "string" &&
+		typeof (cause as Record<string, unknown>).message === "string"
+	);
+}
+
+function tagToCode(tag: string): string {
+	switch (tag) {
+		case "ConfigError":
+			return "CONFIG_ERROR";
+		case "LinearApiError":
+			return "LINEAR_API_ERROR";
+		case "CacheError":
+			return "CACHE_ERROR";
+		case "GitError":
+			return "GIT_ERROR";
+		case "ValidationError":
+			return "VALIDATION_ERROR";
+		case "ResolverError":
+			return "RESOLVER_ERROR";
+		default:
+			return "ERROR";
 	}
-	if (typeof cause === "object" && cause !== null && "message" in cause) {
-		const err = new Error(String((cause as { message: unknown }).message));
-		if ("_tag" in cause) {
-			err.name = String((cause as { _tag: unknown })._tag);
-		}
+}
+
+interface CliError extends Error {
+	code: string;
+	tag: string;
+}
+
+function toError(cause: unknown): CliError {
+	if (isLinearError(cause)) {
+		const err = new Error(cause.message) as CliError;
+		err.name = cause._tag;
+		err.tag = cause._tag;
+		err.code = tagToCode(cause._tag);
 		return err;
 	}
-	return new Error(String(cause));
+	if (cause instanceof Error) {
+		const err = cause as CliError;
+		err.code = err.code ?? "ERROR";
+		err.tag = err.name;
+		return err;
+	}
+	const err = new Error(String(cause)) as CliError;
+	err.code = "ERROR";
+	err.tag = "Error";
+	return err;
 }
 
 // -----------------------------------------------------------------------------

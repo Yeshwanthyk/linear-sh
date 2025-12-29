@@ -1,24 +1,7 @@
 import { Command, Option } from "clipanion";
 import type { Effect } from "effect";
 
-import { type AppLayerOptions, runCommandExit } from "../runtime/cli";
-import type {
-	CacheService,
-	ConfigService,
-	GitService,
-	LinearClientService,
-	LoggerService,
-	OutputService,
-} from "../services";
-
-// Effect services type for commands
-export type AppServices =
-	| ConfigService
-	| CacheService
-	| GitService
-	| LinearClientService
-	| LoggerService
-	| OutputService;
+import { type AppLayerOptions, type AppServices, runCommandExit } from "../runtime/cli";
 
 // Legacy context interface (kept for test compatibility during migration)
 export interface CommandContext {
@@ -97,10 +80,17 @@ export abstract class BaseCommand extends Command {
 	 */
 	protected reportError(error: unknown): void {
 		const message = error instanceof Error ? error.message : String(error);
-		const code = error instanceof Error && "code" in error ? String(error.code) : "ERROR";
+		const code =
+			error instanceof Error && "code" in error && typeof error.code === "string"
+				? error.code
+				: "ERROR";
+		const tag =
+			error instanceof Error && "tag" in error && typeof error.tag === "string"
+				? error.tag
+				: undefined;
 
 		if (this.json) {
-			console.error(JSON.stringify({ error: { message, code } }));
+			console.error(JSON.stringify({ error: { message, code, tag } }));
 		} else {
 			console.error(`Error: ${message}`);
 		}
