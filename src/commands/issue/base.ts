@@ -42,7 +42,11 @@ export abstract class IssueBaseCommand extends BaseCommand {
 	 */
 	protected resolveIssueRefEffect(
 		fallbackToGit = true,
-	): Effect.Effect<string, LinearError, import("../../services").GitService | import("../../services").LoggerService> {
+	): Effect.Effect<
+		string,
+		LinearError,
+		import("../../services").GitService | import("../../services").LoggerService
+	> {
 		const ref = this.issueRef;
 
 		return Effect.gen(function* () {

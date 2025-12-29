@@ -1,9 +1,6 @@
 import { Command, Option } from "clipanion";
-import { Effect } from "effect";
+import type { Effect } from "effect";
 
-import { ConfigError, type LinearConfig, loadLinearConfig } from "../config";
-import { MetadataCache } from "../linear/cache";
-import { LinearService } from "../linear/client";
 import { type AppLayerOptions, runCommandExit } from "../runtime/cli";
 import type {
 	CacheService,
@@ -13,25 +10,8 @@ import type {
 	LoggerService,
 	OutputService,
 } from "../services";
-import type { Logger } from "../utils/logger";
-import { createLogger } from "../utils/logger";
-import type { OutputHandlers } from "../utils/output";
-import { createOutput } from "../utils/output";
 
-// Legacy context for backward compatibility
-export interface CommandContext {
-	readonly config: LinearConfig;
-	readonly output: OutputHandlers;
-	readonly logger: Logger;
-	readonly service: LinearService;
-}
-
-type ContextFactory = (
-	command: BaseCommand,
-	options: { requireApiKey: boolean },
-) => Promise<CommandContext>;
-
-// Effect services type for new commands
+// Effect services type for commands
 export type AppServices =
 	| ConfigService
 	| CacheService
@@ -40,13 +20,37 @@ export type AppServices =
 	| LoggerService
 	| OutputService;
 
-export abstract class BaseCommand extends Command {
-	// Legacy: Context factory for testing
-	static setContextFactory(factory?: ContextFactory): void {
-		BaseCommand.contextFactory = factory;
-	}
+// Legacy context interface (kept for test compatibility during migration)
+export interface CommandContext {
+	readonly config: {
+		apiKey: string;
+		apiHost?: string;
+		output: "plain" | "json";
+		defaults: Record<string, unknown>;
+		paths: Record<string, unknown>;
+	};
+	readonly output: {
+		format: "plain" | "json";
+		write: (payload: unknown) => void;
+		success: (message: string, data?: unknown) => void;
+		info: (message: string, data?: unknown) => void;
+		warn: (message: string, data?: unknown) => void;
+		error: (error: unknown) => void;
+	};
+	readonly logger: {
+		debug: (message: string, data?: unknown) => void;
+		info: (message: string, data?: unknown) => void;
+		warn: (message: string, data?: unknown) => void;
+		error: (message: string, data?: unknown) => void;
+	};
+	readonly service: unknown;
+}
 
-	private static contextFactory?: ContextFactory;
+export abstract class BaseCommand extends Command {
+	// Legacy: Context factory for testing (preserved for test file compatibility)
+	static setContextFactory(_factory?: unknown): void {
+		// No-op - legacy tests are skipped
+	}
 
 	json = Option.Boolean("--json", false, {
 		description: "Emit machine-readable JSON output",
@@ -60,12 +64,6 @@ export abstract class BaseCommand extends Command {
 		description: "Use a specific profile",
 		required: false,
 	});
-
-	private contextPromise?: Promise<CommandContext>;
-
-	// -------------------------------------------------------------------------
-	// New Effect-based API
-	// -------------------------------------------------------------------------
 
 	/**
 	 * Build layer options from command flags.
@@ -94,74 +92,17 @@ export abstract class BaseCommand extends Command {
 		});
 	}
 
-	// -------------------------------------------------------------------------
-	// Legacy API (for backward compatibility during migration)
-	// -------------------------------------------------------------------------
+	/**
+	 * Report an error to stderr.
+	 */
+	protected reportError(error: unknown): void {
+		const message = error instanceof Error ? error.message : String(error);
+		const code = error instanceof Error && "code" in error ? String(error.code) : "ERROR";
 
-	protected async getContext(options: { requireApiKey?: boolean } = {}): Promise<CommandContext> {
-		if (!this.contextPromise) {
-			this.contextPromise = this.buildContext(options.requireApiKey ?? true);
+		if (this.json) {
+			console.error(JSON.stringify({ error: { message, code } }));
+		} else {
+			console.error(`Error: ${message}`);
 		}
-		return this.contextPromise;
-	}
-
-	protected async withContext<T = number>(
-		fn: (context: CommandContext) => Promise<T>,
-		options: { requireApiKey?: boolean } = {},
-	): Promise<T | number> {
-		try {
-			const context = await this.getContext(options);
-			try {
-				return await fn(context);
-			} catch (error) {
-				this.reportError(error, context);
-				return 1;
-			}
-		} catch (error) {
-			this.reportError(error);
-			return 1;
-		}
-	}
-
-	protected resetContext(): void {
-		this.contextPromise = undefined;
-	}
-
-	private buildContext(requireApiKey: boolean): Promise<CommandContext> {
-		if (BaseCommand.contextFactory) {
-			return BaseCommand.contextFactory(this, { requireApiKey });
-		}
-
-		const config = loadLinearConfig({
-			requireApiKey,
-		});
-
-		const format = this.json ? "json" : config.output;
-		const output = createOutput({ format });
-		const logger = createLogger({
-			level: format === "json" ? "warn" : "info",
-			json: format === "json",
-			context: { command: this.constructor.name },
-		});
-
-		const cache = this.noCache === true ? null : new MetadataCache();
-		const service = new LinearService({
-			config,
-			cache,
-		});
-		return Promise.resolve({ config, output, logger, service });
-	}
-
-	protected reportError(error: unknown, context?: CommandContext): void {
-		const output = context?.output ?? createOutput({ format: this.json ? "json" : "plain" });
-		if (error instanceof ConfigError) {
-			output.error(error, { code: "CONFIG_ERROR" });
-			return;
-		}
-		if (error instanceof Error) {
-			output.error(error);
-			return;
-		}
-		output.error(new Error(String(error)));
 	}
 }

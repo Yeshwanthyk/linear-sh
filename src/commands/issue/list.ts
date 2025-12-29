@@ -11,11 +11,7 @@ import {
 } from "../../services";
 import { BaseCommand } from "../base-command";
 import { ISSUE_USAGE_CATEGORY } from "./base";
-import {
-	normalizeOptionString,
-	resolveAssigneeIdEffect,
-	resolveStateIdEffect,
-} from "./helpers";
+import { normalizeOptionString, resolveAssigneeIdEffect, resolveStateIdEffect } from "./helpers";
 
 export class IssueListCommand extends BaseCommand {
 	static paths = [["issue", "list"]];

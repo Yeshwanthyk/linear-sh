@@ -108,7 +108,9 @@ interface LinearIssueEntity {
 	updatedAt?: Date;
 	labels?: (vars?: Record<string, unknown>) => Promise<IssueLabelConnectionEntity>;
 	team?: (vars?: Record<string, unknown>) => Promise<{ id: string; name: string } | null>;
-	state?: (vars?: Record<string, unknown>) => Promise<{ id: string; name: string; type: string } | null>;
+	state?: (
+		vars?: Record<string, unknown>,
+	) => Promise<{ id: string; name: string; type: string } | null>;
 	assignee?: (vars?: Record<string, unknown>) => Promise<{ id: string; name: string } | null>;
 }
 
@@ -150,10 +152,18 @@ export interface LinearClientService {
 	readonly getIssueDetails: (issueRef: string) => Effect.Effect<IssueDetails, LinearError>;
 	readonly listIssues: (options?: IssueListOptions) => Effect.Effect<IssueSummary[], LinearError>;
 	readonly createIssue: (input: IssueCreateInput) => Effect.Effect<IssueSummary, LinearError>;
-	readonly updateIssue: (issueId: string, input: IssueUpdateInput) => Effect.Effect<IssueSummary, LinearError>;
-	readonly transitionIssue: (issueId: string, stateId: string) => Effect.Effect<IssueSummary, LinearError>;
+	readonly updateIssue: (
+		issueId: string,
+		input: IssueUpdateInput,
+	) => Effect.Effect<IssueSummary, LinearError>;
+	readonly transitionIssue: (
+		issueId: string,
+		stateId: string,
+	) => Effect.Effect<IssueSummary, LinearError>;
 	readonly createComment: (input: CommentInput) => Effect.Effect<string, LinearError>;
-	readonly getWorkflowStates: (teamId?: string) => Effect.Effect<WorkflowStateSummary[], LinearError>;
+	readonly getWorkflowStates: (
+		teamId?: string,
+	) => Effect.Effect<WorkflowStateSummary[], LinearError>;
 	readonly getUsers: (teamId?: string) => Effect.Effect<UserSummary[], LinearError>;
 	readonly getTeams: () => Effect.Effect<TeamSummary[], LinearError>;
 }
@@ -274,17 +284,21 @@ export const LinearClientLive: Layer.Layer<LinearClientService, LinearError, Con
 
 						// Fall back to search
 						const searchResponse = await client.searchIssues(trimmed, { first: 1 });
-						const match = (searchResponse as unknown as { nodes?: LinearIssueEntity[] })?.nodes?.[0];
+						const match = (searchResponse as unknown as { nodes?: LinearIssueEntity[] })
+							?.nodes?.[0];
 						if (match) {
 							return match;
 						}
 
 						throw new Error(`Issue ${trimmed} not found`);
 					},
-					catch: (error) => toLinearApiError(error, `Failed to fetch issue ${issueRef}`, "getIssue"),
+					catch: (error) =>
+						toLinearApiError(error, `Failed to fetch issue ${issueRef}`, "getIssue"),
 				});
 
-			const fetchLabels = (issue: LinearIssueEntity): Effect.Effect<IssueLabelSummary[], LinearError> =>
+			const fetchLabels = (
+				issue: LinearIssueEntity,
+			): Effect.Effect<IssueLabelSummary[], LinearError> =>
 				Effect.tryPromise({
 					try: async () => {
 						if (typeof issue.labels !== "function") {
@@ -301,7 +315,9 @@ export const LinearClientLive: Layer.Layer<LinearClientService, LinearError, Con
 					catch: (error) => toLinearApiError(error, "Failed to load labels", "fetchLabels"),
 				});
 
-			const fetchTeam = (issue: LinearIssueEntity): Effect.Effect<{ id: string; name: string } | null, LinearError> =>
+			const fetchTeam = (
+				issue: LinearIssueEntity,
+			): Effect.Effect<{ id: string; name: string } | null, LinearError> =>
 				Effect.tryPromise({
 					try: async () => {
 						if (typeof issue.team !== "function") {
@@ -312,7 +328,9 @@ export const LinearClientLive: Layer.Layer<LinearClientService, LinearError, Con
 					catch: (error) => toLinearApiError(error, "Failed to load team", "fetchTeam"),
 				});
 
-			const fetchState = (issue: LinearIssueEntity): Effect.Effect<{ id: string; name: string } | null, LinearError> =>
+			const fetchState = (
+				issue: LinearIssueEntity,
+			): Effect.Effect<{ id: string; name: string } | null, LinearError> =>
 				Effect.tryPromise({
 					try: async () => {
 						if (typeof issue.state !== "function") {
@@ -323,7 +341,9 @@ export const LinearClientLive: Layer.Layer<LinearClientService, LinearError, Con
 					catch: (error) => toLinearApiError(error, "Failed to load state", "fetchState"),
 				});
 
-			const fetchAssignee = (issue: LinearIssueEntity): Effect.Effect<{ id: string; name: string } | null, LinearError> =>
+			const fetchAssignee = (
+				issue: LinearIssueEntity,
+			): Effect.Effect<{ id: string; name: string } | null, LinearError> =>
 				Effect.tryPromise({
 					try: async () => {
 						if (typeof issue.assignee !== "function") {
@@ -335,8 +355,7 @@ export const LinearClientLive: Layer.Layer<LinearClientService, LinearError, Con
 				});
 
 			return LinearClientService.of({
-				getIssue: (issueRef) =>
-					fetchIssue(issueRef).pipe(Effect.map(mapIssue)),
+				getIssue: (issueRef) => fetchIssue(issueRef).pipe(Effect.map(mapIssue)),
 
 				getIssueDetails: (issueRef) =>
 					Effect.gen(function* () {
@@ -451,7 +470,8 @@ export const LinearClientLive: Layer.Layer<LinearClientService, LinearError, Con
 
 							return mapIssue(response.issueUpdate.issue);
 						},
-						catch: (error) => toLinearApiError(error, `Failed to update issue ${issueId}`, "updateIssue"),
+						catch: (error) =>
+							toLinearApiError(error, `Failed to update issue ${issueId}`, "updateIssue"),
 					}),
 
 				transitionIssue: (issueId, stateId) =>
@@ -472,7 +492,8 @@ export const LinearClientLive: Layer.Layer<LinearClientService, LinearError, Con
 
 							return mapIssue(response.issueUpdate.issue);
 						},
-						catch: (error) => toLinearApiError(error, `Failed to transition issue ${issueId}`, "transitionIssue"),
+						catch: (error) =>
+							toLinearApiError(error, `Failed to transition issue ${issueId}`, "transitionIssue"),
 					}),
 
 				createComment: (input) =>
@@ -495,7 +516,12 @@ export const LinearClientLive: Layer.Layer<LinearClientService, LinearError, Con
 
 							return response.commentCreate.comment.id;
 						},
-						catch: (error) => toLinearApiError(error, `Failed to comment on issue ${input.issueId}`, "createComment"),
+						catch: (error) =>
+							toLinearApiError(
+								error,
+								`Failed to comment on issue ${input.issueId}`,
+								"createComment",
+							),
 					}),
 
 				getWorkflowStates: (teamId) =>
@@ -521,7 +547,8 @@ export const LinearClientLive: Layer.Layer<LinearClientService, LinearError, Con
 								teamId: node.team?.id ?? null,
 							}));
 						},
-						catch: (error) => toLinearApiError(error, "Failed to load workflow states", "getWorkflowStates"),
+						catch: (error) =>
+							toLinearApiError(error, "Failed to load workflow states", "getWorkflowStates"),
 					}),
 
 				getUsers: (_teamId) =>
@@ -577,31 +604,51 @@ export const LinearClientLive: Layer.Layer<LinearClientService, LinearError, Con
 // Accessor functions
 // -----------------------------------------------------------------------------
 
-export const getIssue = (issueRef: string): Effect.Effect<IssueSummary, LinearError, LinearClientService> =>
+export const getIssue = (
+	issueRef: string,
+): Effect.Effect<IssueSummary, LinearError, LinearClientService> =>
 	Effect.flatMap(LinearClientService, (service) => service.getIssue(issueRef));
 
-export const getIssueDetails = (issueRef: string): Effect.Effect<IssueDetails, LinearError, LinearClientService> =>
+export const getIssueDetails = (
+	issueRef: string,
+): Effect.Effect<IssueDetails, LinearError, LinearClientService> =>
 	Effect.flatMap(LinearClientService, (service) => service.getIssueDetails(issueRef));
 
-export const listIssues = (options?: IssueListOptions): Effect.Effect<IssueSummary[], LinearError, LinearClientService> =>
+export const listIssues = (
+	options?: IssueListOptions,
+): Effect.Effect<IssueSummary[], LinearError, LinearClientService> =>
 	Effect.flatMap(LinearClientService, (service) => service.listIssues(options));
 
-export const createIssue = (input: IssueCreateInput): Effect.Effect<IssueSummary, LinearError, LinearClientService> =>
+export const createIssue = (
+	input: IssueCreateInput,
+): Effect.Effect<IssueSummary, LinearError, LinearClientService> =>
 	Effect.flatMap(LinearClientService, (service) => service.createIssue(input));
 
-export const updateIssue = (issueId: string, input: IssueUpdateInput): Effect.Effect<IssueSummary, LinearError, LinearClientService> =>
+export const updateIssue = (
+	issueId: string,
+	input: IssueUpdateInput,
+): Effect.Effect<IssueSummary, LinearError, LinearClientService> =>
 	Effect.flatMap(LinearClientService, (service) => service.updateIssue(issueId, input));
 
-export const transitionIssue = (issueId: string, stateId: string): Effect.Effect<IssueSummary, LinearError, LinearClientService> =>
+export const transitionIssue = (
+	issueId: string,
+	stateId: string,
+): Effect.Effect<IssueSummary, LinearError, LinearClientService> =>
 	Effect.flatMap(LinearClientService, (service) => service.transitionIssue(issueId, stateId));
 
-export const createComment = (input: CommentInput): Effect.Effect<string, LinearError, LinearClientService> =>
+export const createComment = (
+	input: CommentInput,
+): Effect.Effect<string, LinearError, LinearClientService> =>
 	Effect.flatMap(LinearClientService, (service) => service.createComment(input));
 
-export const getWorkflowStates = (teamId?: string): Effect.Effect<WorkflowStateSummary[], LinearError, LinearClientService> =>
+export const getWorkflowStates = (
+	teamId?: string,
+): Effect.Effect<WorkflowStateSummary[], LinearError, LinearClientService> =>
 	Effect.flatMap(LinearClientService, (service) => service.getWorkflowStates(teamId));
 
-export const getUsers = (teamId?: string): Effect.Effect<UserSummary[], LinearError, LinearClientService> =>
+export const getUsers = (
+	teamId?: string,
+): Effect.Effect<UserSummary[], LinearError, LinearClientService> =>
 	Effect.flatMap(LinearClientService, (service) => service.getUsers(teamId));
 
 export const getTeams = (): Effect.Effect<TeamSummary[], LinearError, LinearClientService> =>

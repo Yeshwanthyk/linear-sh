@@ -20,11 +20,6 @@ import {
 	resolveStateIdEffect,
 } from "./helpers";
 
-interface UpdateInput {
-	fields: IssueUpdateInput;
-	comment?: string;
-}
-
 export class IssueUpdateCommand extends IssueBaseCommand {
 	static paths = [["issue", "update"]];
 
@@ -118,9 +113,7 @@ Failure Modes:
 				}
 
 				const hasFieldUpdates = Object.keys(updateInput.fields).length > 0;
-				const updated = hasFieldUpdates
-					? yield* updateIssue(issue.id, updateInput.fields)
-					: issue;
+				const updated = hasFieldUpdates ? yield* updateIssue(issue.id, updateInput.fields) : issue;
 
 				if (updateInput.comment) {
 					yield* createComment({
