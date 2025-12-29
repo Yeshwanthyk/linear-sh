@@ -1,18 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { LinearApiErrorClass as LinearApiError } from "../../errors";
-import type { IssueDetails, IssueSummary } from "../../linear/client";
+import type { IssueDetails, IssueSummary } from "../../services";
 import { BaseCommand } from "../base-command";
 import type { CommandContext } from "../base-command";
-import { IssueCreateCommand } from "./create";
-import { IssueIdCommand } from "./id";
-import { IssueListCommand } from "./list";
-import { IssuePrCommand } from "./pr";
-import { IssueStartCommand } from "./start";
-import { IssueTitleCommand } from "./title";
-import { IssueUpdateCommand } from "./update";
-import { IssueUrlCommand } from "./url";
-import { IssueViewCommand } from "./view";
 
 // NOTE: These tests use the legacy BaseCommand.setContextFactory() pattern
 // which doesn't work with the new Effect-based this.run() approach.
