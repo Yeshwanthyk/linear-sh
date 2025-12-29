@@ -109,7 +109,7 @@ export const GitServiceLive: Layer.Layer<GitService, never> = Layer.succeed(
 					const result = await $`git show-ref --verify --quiet refs/heads/${name}`.exitCode;
 					return result === 0;
 				},
-				catch: () => Effect.succeed(false),
+				catch: () => false,
 			}).pipe(Effect.catchAll(() => Effect.succeed(false))),
 
 		inferIssueKey: (): Effect.Effect<string | null, LinearError> =>
