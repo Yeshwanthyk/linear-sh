@@ -6,9 +6,9 @@ import { write } from "../../services";
 import { BaseCommand } from "../base-command";
 
 export class ProfileListCommand extends BaseCommand {
-	static paths = [["profile", "list"]];
+	static override paths = [["profile", "list"]];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "List configured profiles",
 		examples: [["List all profiles", "linear-sh profile list"]],
 	});

@@ -5,9 +5,9 @@ import { getIssue, write } from "../../services";
 import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
 
 export class IssueTitleCommand extends IssueBaseCommand {
-	static paths = [["issue", "title"]];
+	static override paths = [["issue", "title"]];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "Print the Linear issue title",
 		category: ISSUE_USAGE_CATEGORY,
 		details: `

@@ -5,9 +5,9 @@ import { getTeams, write } from "../../services";
 import { BaseCommand } from "../base-command";
 
 export class TeamListCommand extends BaseCommand {
-	static paths = [["team", "list"]];
+	static override paths = [["team", "list"]];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "List teams in the organization",
 		examples: [
 			["List teams", "linear-sh team list"],

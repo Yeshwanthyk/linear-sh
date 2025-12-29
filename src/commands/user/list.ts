@@ -5,9 +5,9 @@ import { getConfig, getUsers, write } from "../../services";
 import { BaseCommand } from "../base-command";
 
 export class UserListCommand extends BaseCommand {
-	static paths = [["user", "list"]];
+	static override paths = [["user", "list"]];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "List users in the organization",
 		examples: [
 			["List all users", "linear-sh user list"],

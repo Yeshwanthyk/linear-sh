@@ -17,9 +17,9 @@ import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
 import { normalizeOptionString, resolveAssigneeIdEffect, resolveStateIdEffect } from "./helpers";
 
 export class IssueStartCommand extends IssueBaseCommand {
-	static paths = [["issue", "start"]];
+	static override paths = [["issue", "start"]];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "Start working on an issue: create branch and transition state",
 		category: ISSUE_USAGE_CATEGORY,
 		details: `

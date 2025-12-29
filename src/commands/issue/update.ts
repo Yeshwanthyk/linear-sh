@@ -21,9 +21,9 @@ import {
 } from "./helpers";
 
 export class IssueUpdateCommand extends IssueBaseCommand {
-	static paths = [["issue", "update"]];
+	static override paths = [["issue", "update"]];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "Update a Linear issue",
 		category: ISSUE_USAGE_CATEGORY,
 		details: `

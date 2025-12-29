@@ -25,9 +25,9 @@ import { UserListCommand } from "./commands/user/list";
 import { getConfig, success, warn } from "./services";
 
 class RootCommand extends BaseCommand {
-	static paths = [[]];
+	static override paths = [[]];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "Linear CLI entrypoint",
 		details: `
 Run without subcommands to validate configuration.

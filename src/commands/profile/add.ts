@@ -12,9 +12,9 @@ interface PromptResponses {
 }
 
 export class ProfileAddCommand extends BaseCommand {
-	static paths = [["profile", "add"]];
+	static override paths = [["profile", "add"]];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "Add a new profile",
 		examples: [
 			["Interactive", "linear-sh profile add"],

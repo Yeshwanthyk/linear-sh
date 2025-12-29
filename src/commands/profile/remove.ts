@@ -6,9 +6,9 @@ import { success, write } from "../../services";
 import { BaseCommand } from "../base-command";
 
 export class ProfileRemoveCommand extends BaseCommand {
-	static paths = [["profile", "remove"]];
+	static override paths = [["profile", "remove"]];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "Remove a profile",
 		examples: [["Remove old profile", "linear-sh profile remove old"]],
 	});

@@ -5,9 +5,9 @@ import { getConfig, getWorkflowStates, write } from "../../services";
 import { BaseCommand } from "../base-command";
 
 export class StateListCommand extends BaseCommand {
-	static paths = [["state", "list"]];
+	static override paths = [["state", "list"]];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "List workflow states",
 		examples: [
 			["List all states", "linear-sh state list"],

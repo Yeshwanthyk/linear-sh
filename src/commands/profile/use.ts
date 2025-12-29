@@ -6,9 +6,9 @@ import { success, write } from "../../services";
 import { BaseCommand } from "../base-command";
 
 export class ProfileUseCommand extends BaseCommand {
-	static paths = [["profile", "use"]];
+	static override paths = [["profile", "use"]];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "Switch active profile",
 		examples: [["Switch to work", "linear-sh profile use work"]],
 	});

@@ -5,12 +5,12 @@ import { getConfig, write } from "../../services";
 import { BaseCommand } from "../base-command";
 
 export class ProfileShowCommand extends BaseCommand {
-	static paths = [
+	static override paths = [
 		["profile", "show"],
 		["config", "show"],
 	];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "Show resolved configuration for active profile",
 		examples: [["Show config", "linear-sh profile show"]],
 	});

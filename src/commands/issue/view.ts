@@ -6,9 +6,9 @@ import { openInBrowser } from "../../utils/open";
 import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
 
 export class IssueViewCommand extends IssueBaseCommand {
-	static paths = [["issue", "view"]];
+	static override paths = [["issue", "view"]];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "Display Linear issue details",
 		category: ISSUE_USAGE_CATEGORY,
 		details: `

@@ -19,7 +19,7 @@ function normaliseCategory(category?: string | null): string {
 type DefinitionsFn = (opts?: { colored?: boolean }) => CommandDefinition[];
 
 export class CompactHelpCommand extends Command {
-	static paths = [["-h"], ["--help"], ["help"]];
+	static override paths = [["-h"], ["--help"], ["help"]];
 
 	async execute(): Promise<number> {
 		const definitions = (this.cli.definitions as DefinitionsFn)({
@@ -80,7 +80,7 @@ export class CompactHelpCommand extends Command {
 }
 
 export class DetailedHelpCommand extends Command {
-	static paths = [["--help-verbose"]];
+	static override paths = [["--help-verbose"]];
 
 	async execute(): Promise<number> {
 		const definitions = (this.cli.definitions as DefinitionsFn)({

@@ -7,9 +7,9 @@ import { getIssueDetails, success } from "../../services";
 import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
 
 export class IssuePrCommand extends IssueBaseCommand {
-	static paths = [["issue", "pr"]];
+	static override paths = [["issue", "pr"]];
 
-	static usage = Command.Usage({
+	static override usage = Command.Usage({
 		description: "Create a GitHub pull request seeded with Linear issue context",
 		category: ISSUE_USAGE_CATEGORY,
 		details: `
