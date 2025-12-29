@@ -36,6 +36,20 @@ export const GitService = Context.GenericTag<GitService>("linear-sh/services/Git
 
 const ISSUE_KEY_PATTERN = /\b([a-z]+-\d+)\b/i;
 
+/**
+ * Sanitize a string for use as a git branch name.
+ * Converts to lowercase, replaces spaces with dashes, removes special characters.
+ */
+export function sanitizeBranchName(raw: string): string {
+	return raw
+		.toLowerCase()
+		.trim()
+		.replace(/\s+/g, "-")
+		.replace(/[^a-z0-9-]/g, "")
+		.replace(/-+/g, "-")
+		.replace(/^-|-$/g, "");
+}
+
 function extractIssueKey(branch: string): string | null {
 	const match = ISSUE_KEY_PATTERN.exec(branch);
 	if (!match || !match[1]) {

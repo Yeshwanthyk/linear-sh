@@ -30,6 +30,7 @@ export {
 	checkoutBranch,
 	branchExists,
 	inferIssueKey,
+	sanitizeBranchName,
 } from "./git";
 
 // Output Service

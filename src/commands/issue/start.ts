@@ -1,7 +1,7 @@
 import { Command, Option } from "clipanion";
 import { Effect } from "effect";
 
-import { sanitizeBranchName } from "../../git/branch";
+import { sanitizeBranchName } from "../../services/git";
 import {
 	branchExists,
 	checkoutBranch,
@@ -14,11 +14,7 @@ import {
 	type IssueSummary,
 } from "../../services";
 import { ISSUE_USAGE_CATEGORY, IssueBaseCommand } from "./base";
-import {
-	normalizeOptionString,
-	resolveAssigneeIdEffect,
-	resolveStateIdEffect,
-} from "./helpers";
+import { normalizeOptionString, resolveAssigneeIdEffect, resolveStateIdEffect } from "./helpers";
 
 export class IssueStartCommand extends IssueBaseCommand {
 	static paths = [["issue", "start"]];
