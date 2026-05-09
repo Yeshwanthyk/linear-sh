@@ -5,9 +5,11 @@ import {
 	listIssues,
 	createIssue,
 	updateIssue,
+	getLabels,
 	type IssueCreateInput,
 	type IssueUpdateInput,
 } from "../../services";
+import { IssueCreateCommand } from "./create";
 import { runTest, runTestExit } from "../../test/layers";
 import { mockIssueSummary, mockIssueDetails, defaultMockIssues } from "../../test/mocks/linear";
 
@@ -145,6 +147,74 @@ describe("IssueCreateCommand", () => {
 		expect(capturedInput?.assigneeId).toBe("user-alice");
 		expect(capturedInput?.labelIds).toEqual(["label-1", "label-2"]);
 		expect(capturedInput?.projectId).toBe("project-1");
+	});
+
+	test("explicit different team does not inherit default project", async () => {
+		const command = new IssueCreateCommand();
+		command.title = "New Issue";
+		command.description = "Test description";
+		command.team = "team-support";
+
+		const input = await runTest(
+			(
+				command as unknown as { collectInputEffect: () => ReturnType<typeof createIssue> }
+			).collectInputEffect(),
+			{
+				config: {
+					activeProfile: "test",
+					profile: {
+						apiKey: "test-api-key",
+						apiHost: "https://api.linear.app/graphql",
+						defaults: {
+							teamId: "team-eng",
+							projectId: "project-eng",
+						},
+					},
+					output: "plain",
+					paths: {
+						configDir: "/tmp/linear-sh-test",
+						configFile: "/tmp/linear-sh-test/config.json",
+						cacheDir: "/tmp/linear-sh-test/cache",
+						activeProfileFile: "/tmp/linear-sh-test/active-profile",
+					},
+				},
+			},
+		);
+
+		expect(input.teamId).toBe("team-support");
+		expect(input.projectId).toBeUndefined();
+	});
+});
+
+// -----------------------------------------------------------------------------
+// LabelListCommand behavior
+// -----------------------------------------------------------------------------
+
+describe("LabelListCommand", () => {
+	const labels = [
+		{ id: "label-workspace", name: "Sentry", color: "#000000", teamId: null },
+		{ id: "label-eng", name: "Backend", color: "#111111", teamId: "team-eng" },
+		{ id: "label-support", name: "Support", color: "#222222", teamId: "team-support" },
+	];
+
+	test("getLabels without team returns all labels", async () => {
+		const result = await runTest(getLabels(), {
+			linearClient: { labels },
+		});
+
+		expect(result.map((label) => label.id)).toEqual([
+			"label-workspace",
+			"label-eng",
+			"label-support",
+		]);
+	});
+
+	test("getLabels with team returns workspace and team labels", async () => {
+		const result = await runTest(getLabels("team-support"), {
+			linearClient: { labels },
+		});
+
+		expect(result.map((label) => label.id)).toEqual(["label-workspace", "label-support"]);
 	});
 });
 

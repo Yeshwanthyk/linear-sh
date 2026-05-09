@@ -136,6 +136,7 @@ export interface MockLinearClientOptions {
 	workflowStates?: WorkflowStateSummary[];
 	users?: UserSummary[];
 	teams?: TeamSummary[];
+	labels?: IssueLabelSummary[];
 	onGetIssue?: (issueRef: string) => IssueSummary;
 	onGetIssueDetails?: (issueRef: string) => IssueDetails;
 	onListIssues?: (options?: IssueListOptions) => IssueSummary[];
@@ -152,6 +153,7 @@ export function mockLinearClientService(
 	const workflowStates = options.workflowStates ?? defaultMockWorkflowStates;
 	const users = options.users ?? defaultMockUsers;
 	const teams = options.teams ?? defaultMockTeams;
+	const labels = options.labels ?? [];
 
 	return {
 		getIssue: (issueRef) => {
@@ -266,6 +268,13 @@ export function mockLinearClientService(
 
 		getTeams: () => {
 			return Effect.succeed(teams);
+		},
+
+		getLabels: (teamId) => {
+			const result = teamId
+				? labels.filter((label) => label.teamId === teamId || label.teamId === null)
+				: labels;
+			return Effect.succeed(result);
 		},
 	};
 }

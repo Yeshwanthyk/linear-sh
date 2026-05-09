@@ -14,6 +14,7 @@ import { IssueTitleCommand } from "./commands/issue/title";
 import { IssueUpdateCommand } from "./commands/issue/update";
 import { IssueUrlCommand } from "./commands/issue/url";
 import { IssueViewCommand } from "./commands/issue/view";
+import { LabelListCommand } from "./commands/label/list";
 import { ProfileAddCommand } from "./commands/profile/add";
 import { ProfileListCommand } from "./commands/profile/list";
 import { ProfileRemoveCommand } from "./commands/profile/remove";
@@ -88,6 +89,7 @@ const commandClasses = [
 	IssueUpdateCommand,
 	IssueStartCommand,
 	IssuePrCommand,
+	LabelListCommand,
 	// Profile commands
 	ProfileAddCommand,
 	ProfileListCommand,

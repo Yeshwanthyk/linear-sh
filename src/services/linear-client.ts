@@ -29,6 +29,7 @@ export interface IssueLabelSummary {
 	readonly id: string;
 	readonly name: string;
 	readonly color: string | null;
+	readonly teamId: string | null;
 }
 
 export interface IssueDetails extends IssueSummary {
@@ -143,6 +144,17 @@ interface GraphqlRequester {
 	request(document: unknown, variables: Record<string, unknown>): Promise<unknown>;
 }
 
+interface IssueLabelsResponse {
+	issueLabels?: {
+		nodes?: Array<{
+			id: string;
+			name: string;
+			color?: string | null;
+			team?: { id: string } | null;
+		}>;
+	};
+}
+
 // -----------------------------------------------------------------------------
 // Service Interface
 // -----------------------------------------------------------------------------
@@ -166,6 +178,7 @@ export interface LinearClientService {
 	) => Effect.Effect<WorkflowStateSummary[], LinearError>;
 	readonly getUsers: (teamId?: string) => Effect.Effect<UserSummary[], LinearError>;
 	readonly getTeams: () => Effect.Effect<TeamSummary[], LinearError>;
+	readonly getLabels: (teamId?: string) => Effect.Effect<IssueLabelSummary[], LinearError>;
 }
 
 // -----------------------------------------------------------------------------
@@ -310,6 +323,7 @@ export const LinearClientLive: Layer.Layer<LinearClientService, LinearError, Con
 							id: label.id,
 							name: label.name,
 							color: label.color ?? null,
+							teamId: null,
 						}));
 					},
 					catch: (error) => toLinearApiError(error, "Failed to load labels", "fetchLabels"),
@@ -604,6 +618,45 @@ export const LinearClientLive: Layer.Layer<LinearClientService, LinearError, Con
 						},
 						catch: (error) => toLinearApiError(error, "Failed to load teams", "getTeams"),
 					}),
+
+				getLabels: (teamId) =>
+					Effect.tryPromise({
+						try: async () => {
+							if (!graphqlClient) {
+								throw new Error("GraphQL client not available");
+							}
+
+							const filter = teamId
+								? { or: [{ team: { id: { eq: teamId } } }, { team: { null: true } }] }
+								: undefined;
+							const response = (await graphqlClient.request(
+								`
+									query LinearShIssueLabels($filter: IssueLabelFilter) {
+										issueLabels(first: 250, filter: $filter) {
+											nodes {
+												id
+												name
+												color
+												team {
+													id
+												}
+											}
+										}
+									}
+								`,
+								{ filter },
+							)) as IssueLabelsResponse;
+
+							const nodes = response.issueLabels?.nodes ?? [];
+							return nodes.map((label) => ({
+								id: label.id,
+								name: label.name,
+								color: label.color ?? null,
+								teamId: label.team?.id ?? null,
+							}));
+						},
+						catch: (error) => toLinearApiError(error, "Failed to load labels", "getLabels"),
+					}),
 			});
 		}),
 	);
@@ -661,3 +714,8 @@ export const getUsers = (
 
 export const getTeams = (): Effect.Effect<TeamSummary[], LinearError, LinearClientService> =>
 	Effect.flatMap(LinearClientService, (service) => service.getTeams());
+
+export const getLabels = (
+	teamId?: string,
+): Effect.Effect<IssueLabelSummary[], LinearError, LinearClientService> =>
+	Effect.flatMap(LinearClientService, (service) => service.getLabels(teamId));

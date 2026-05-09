@@ -73,6 +73,7 @@ export {
 	getWorkflowStates,
 	getUsers,
 	getTeams,
+	getLabels,
 	type IssueSummary,
 	type IssueDetails,
 	type IssueCreateInput,
