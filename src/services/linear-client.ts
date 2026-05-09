@@ -441,7 +441,15 @@ export const LinearClientLive: Layer.Layer<LinearClientService, LinearError, Con
 								throw new Error("Linear API did not return created issue");
 							}
 
-							return mapIssue(response.issueCreate.issue);
+							const created = response.issueCreate.issue;
+							if (created.id) {
+								const hydrated = await client.issue(created.id);
+								if (hydrated) {
+									return mapIssue(hydrated as unknown as LinearIssueEntity);
+								}
+							}
+
+							return mapIssue(created);
 						},
 						catch: (error) => toLinearApiError(error, "Failed to create issue", "createIssue"),
 					}),

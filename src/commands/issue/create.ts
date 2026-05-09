@@ -163,7 +163,9 @@ Failure Modes:
 			);
 
 			const labelIds = normalizeOptionStringArray(self.labels) ?? undefined;
-			const projectId = defaults.projectId ?? undefined;
+			const explicitTeamId = normalizeOptionString(self.team);
+			const projectId =
+				explicitTeamId && explicitTeamId !== defaults.teamId ? undefined : defaults.projectId;
 
 			return {
 				teamId,
